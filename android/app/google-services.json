@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "653010187544",
+    "project_id": "score-manager1",
+    "storage_bucket": "score-manager1.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:653010187544:android:43ed604b6bfe95b0491a6d",
+        "android_client_info": {
+          "package_name": "com.techNova.score_manager.score_manager"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "653010187544-9ftuv3a8l3084hs079gejp4rsp34j7pq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.techNova.score_manager.score_manager",
+            "certificate_hash": "86637f259ca50c2481661e4fd3bdfafbd90cc3a8"
+          }
+        },
+        {
+          "client_id": "653010187544-iks7g4286dnfu86p2d43si0pnjod2jf7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJiAUdwwOOkKdCQBZEW7L30XPanyUF2eY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "653010187544-iks7g4286dnfu86p2d43si0pnjod2jf7.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "653010187544-9iphth08nsjt4pgm1hlv6l99lnar1l03.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.techNova.scoremanager.scoreManager.RunnerTests"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
