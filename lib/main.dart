@@ -1,6 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:score_manager/screens/SignIn.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:score_manager/screens/home_page.dart';
 import 'firebase_options.dart';
 import 'config/app_mode.dart';
 
@@ -9,11 +11,17 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+
+  // Check if the user is signed in
+  User? user = FirebaseAuth.instance.currentUser;
+
+  runApp(MyApp(user: user));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final User? user;
+
+  const MyApp({super.key, required this.user});
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +32,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const SignInScreen(),
+      home: user != null ? HomeScreen() : const SignInScreen(),
     );
   }
 }
