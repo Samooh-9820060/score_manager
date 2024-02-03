@@ -32,7 +32,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: user != null ? HomeScreen() : const SignInScreen(),
+      home: user != null ? const HomeScreen() : const SignInScreen(),
     );
   }
 }

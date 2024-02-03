@@ -41,18 +41,18 @@ class SignInScreenState extends State<SignInScreen>
         _passwordController.text.isEmpty ||
         _usernameController.text.isEmpty) {
       showInfoDialog(
-          "Error", "Name, Email and password cannot be empty", context);
+          "Error", "Name, Email and password cannot be empty", false, context);
       return;
-    } else if (username.length <= 5) {
+    } else if (username.length <= 5 || username.length > 15) {
       showInfoDialog(
-          "Error", "Username must be longer than 5 characters", context);
+          "Error", "Username must be between 5 to 15 characters", false, context);
       return;
     }
 
     var usernameExists = await _checkUsernameExists(username);
     if (usernameExists) {
       showInfoDialog("Error",
-          "Username already exists, please choose another one", context);
+          "Username already exists, please choose another one", false, context);
       return;
     }
 
@@ -76,23 +76,23 @@ class SignInScreenState extends State<SignInScreen>
         showInfoDialog(
             'Verify Your Email',
             'A verification email has been sent. Please check your email and verify your account. After verifying please sign in.',
-            context);
+            false, context);
         _emailController.clear();
         _usernameController.clear();
         _passwordController.clear();
         _tabController.index = 0;
       } else {
         showInfoDialog(
-            "Error", "An error occurred while registering.", context);
+            "Error", "An error occurred while registering.", false, context);
       }
     } on FirebaseAuthException catch (e) {
       // Handle Firebase Auth error
-      showInfoDialog("Error", e.message ?? "An error occurred", context);
+      showInfoDialog("Error", e.message ?? "An error occurred", false, context);
     } catch (e) {
       // Log the error
       print(e.toString());
       showInfoDialog(
-          "Error", "An unexpected error occurred: ${e.toString()}", context);
+          "Error", "An unexpected error occurred: ${e.toString()}", false, context);
     }
   }
 
@@ -101,7 +101,7 @@ class SignInScreenState extends State<SignInScreen>
     String password = _passwordController.text.trim();
 
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      showInfoDialog("Error", "Email and password cannot be empty", context);
+      showInfoDialog("Error", "Email and password cannot be empty", false, context);
       return;
     } else {
       try {
@@ -115,7 +115,7 @@ class SignInScreenState extends State<SignInScreen>
           showInfoDialog(
               "Error",
               "Email is not verified. Please check your email to verify. We have again sent an email to verify",
-              context);
+              false, context);
           await user.sendEmailVerification();
           return;
         }
@@ -123,12 +123,12 @@ class SignInScreenState extends State<SignInScreen>
         Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => HomeScreen()));
       } on FirebaseAuthException catch (e) {
         // Handle error
-        showInfoDialog("Error", e.message ?? "An error occurred", context);
+        showInfoDialog("Error", e.message ?? "An error occurred", false, context);
       } catch (e) {
         // Handle other errors
         print(e.toString());
         showInfoDialog(
-            "Error", "An unexpected error occurred: ${e.toString()}", context);
+            "Error", "An unexpected error occurred: ${e.toString()}", false, context);
       }
     }
   }
@@ -191,16 +191,16 @@ class SignInScreenState extends State<SignInScreen>
             TextButton(
                 child: const Text('Submit'),
                 onPressed: () async {
-                  if (username.isEmpty || username.length <= 5) {
+                  if (username.isEmpty || username.length <= 5 || username.length > 15) {
                     showInfoDialog(
-                        "Error", "Username must be longer than 5 characters", context);
+                        "Error", "Username must be between 5 to 15 characters", false, context);
                     return;
                   }
 
                   var usernameExists = await _checkUsernameExists(username);
                   if (usernameExists) {
                     showInfoDialog("Error",
-                        "Username already exists, please choose another one", context);
+                        "Username already exists, please choose another one", false, context);
                     return;
                   }
                   await FirebaseFirestore.instance
@@ -209,6 +209,7 @@ class SignInScreenState extends State<SignInScreen>
                       .set({
                     'email': user?.email,
                     'username': username,
+                    'profileImageUrl': user?.photoURL,
                     'created': DateTime.now(),
                   });
                   usernameSet = true;
@@ -375,16 +376,16 @@ class SignInScreenState extends State<SignInScreen>
                   showInfoDialog(
                       'Reset Password',
                       'Instructions to reset password have been sent to $email. (If this email is signed in from)',
-                      context);
+                      false, context);
                 } catch (e) {
                   // Handle the error and show a dialog
                   showInfoDialog(
-                      'Error', 'An error occurred: ${e.toString()}', context);
+                      'Error', 'An error occurred: ${e.toString()}', false, context);
                 }
               } else {
                 // Prompt the user to enter a valid email
                 showInfoDialog(
-                    'Error', 'Please enter a valid email address', context);
+                    'Error', 'Please enter a valid email address', false, context);
               }
             },
             child: const Text(
