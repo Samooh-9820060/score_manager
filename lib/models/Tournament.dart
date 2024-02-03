@@ -12,6 +12,7 @@ class Tournament {
   final DateTime createdDate;
   final String createdBy;
   final int? winner;
+  final List<String> viewTournament;
 
   Tournament({
     required this.id,
@@ -24,12 +25,19 @@ class Tournament {
     required this.pointValues,
     required this.createdDate,
     required this.createdBy,
+    this.viewTournament = const [],
   });
 
   factory Tournament.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     List<Participant> participants = (data['participants'] as List<dynamic>)
         .map((participantData) => Participant.fromMap(participantData as Map<String, dynamic>))
+        .toList();
+
+    // Extract non-null user ids from participants
+    List<String> viewableUsers = participants
+        .where((participant) => participant.id != null && participant.isRegisteredUser)
+        .map((participant) => participant.id!)
         .toList();
 
     return Tournament(
@@ -42,7 +50,8 @@ class Tournament {
       pointValues: List<int>.from(data['pointValues'] ?? []),
       createdDate: DateTime.parse(data['createdDate']),
       createdBy: data['createdBy'] ?? '',
-      winner: data['winner'] ?? null,
+      winner: data['winner'],
+      viewTournament: List<String>.from(data['viewTournament'] ?? viewableUsers),
     );
   }
 
@@ -58,6 +67,7 @@ class Tournament {
       'createdDate': createdDate.toIso8601String(),
       'createdBy': createdBy,
       'winner': winner,
+      'viewTournament': viewTournament,
     };
   }
 }

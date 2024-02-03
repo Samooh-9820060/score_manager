@@ -88,6 +88,7 @@ class TournamentCreationFormState extends State<TournamentCreationForm> {
       // Query for matching usernames
       var usernameQuerySnapshot = await FirebaseFirestore.instance
           .collection('users')
+          .where('allowTournamentAddition', isEqualTo: true)
           .where('username', isGreaterThanOrEqualTo: query)
           .where('username', isLessThan: '${query}z')
           .limit(5)
@@ -96,6 +97,7 @@ class TournamentCreationFormState extends State<TournamentCreationForm> {
       // Query for matching emails
       var emailQuerySnapshot = await FirebaseFirestore.instance
           .collection('users')
+          .where('allowTournamentAddition', isEqualTo: true)
           .where('email', isGreaterThanOrEqualTo: query)
           .where('email', isLessThan: '${query}z')
           .limit(5)
@@ -595,17 +597,36 @@ class TournamentCreationFormState extends State<TournamentCreationForm> {
     // Validate form fields
     if (_formKey.currentState!.validate()) {
       try {
+
+        // Create a tournament object
+        DateTime? startDate;
+        DateTime? endDate;
+
+        if (_startDateController.text.isNotEmpty) {
+          startDate = DateFormat('dd-MM-yyyy').parse(_startDateController.text);
+        }
+        if (_endDateController.text.isNotEmpty) {
+          endDate = DateFormat('dd-MM-yyyy').parse(_endDateController.text);
+        }
+
+        // Extract non-null user ids from participants
+        List<String> viewableUsers = _participants
+            .where((participant) => participant.id != null && participant.isRegisteredUser)
+            .map((participant) => participant.id!)
+            .toList();
+
         // Create a tournament object
         Tournament newTournament = Tournament(
           id: FirebaseFirestore.instance.collection('tournaments').doc().id, // Generate unique ID
           name: _nameController.text.trim(),
-          startDate: _startDateController.text.isEmpty ? null : DateTime.parse(_startDateController.text),
-          endDate: _endDateController.text.isEmpty ? null : DateTime.parse(_endDateController.text),
+          startDate: startDate,
+          endDate: endDate,
           participants: _participants,
           scoringMethod: _scoringMethod,
           pointValues: _pointValues,
           createdDate: DateTime.now(),
-          createdBy: FirebaseAuth.instance.currentUser!.uid, // Assuming the user is logged in
+          createdBy: FirebaseAuth.instance.currentUser!.uid,
+          viewTournament: viewableUsers,
         );
 
         // Convert the tournament object to a Map
@@ -619,6 +640,7 @@ class TournamentCreationFormState extends State<TournamentCreationForm> {
           'pointValues': newTournament.pointValues,
           'createdDate': newTournament.createdDate.toIso8601String(),
           'createdBy': newTournament.createdBy,
+          'viewTournament': newTournament.viewTournament,
         };
 
         // Save to Firestore
@@ -646,6 +668,12 @@ class TournamentCreationFormState extends State<TournamentCreationForm> {
           endDate = DateFormat('dd-MM-yyyy').parse(_endDateController.text);
         }
 
+        // Extract non-null user ids from participants
+        List<String> viewableUsers = _participants
+            .where((participant) => participant.id != null && participant.isRegisteredUser)
+            .map((participant) => participant.id!)
+            .toList();
+
         Tournament currentTournament = Tournament(
           id: widget.tournament!.id, // Use existing ID
           name: _nameController.text.trim(),
@@ -655,7 +683,8 @@ class TournamentCreationFormState extends State<TournamentCreationForm> {
           scoringMethod: _scoringMethod,
           pointValues: _pointValues,
           createdDate: widget.tournament!.createdDate, // Use existing createdDate
-          createdBy: widget.tournament!.createdBy, // Use existing createdBy
+          createdBy: widget.tournament!.createdBy,
+          viewTournament: viewableUsers,
         );
 
         // Convert the tournament object to a Map
@@ -669,6 +698,7 @@ class TournamentCreationFormState extends State<TournamentCreationForm> {
           'pointValues': currentTournament.pointValues,
           'createdDate': currentTournament.createdDate.toIso8601String(),
           'createdBy': currentTournament.createdBy,
+          'viewTournament': currentTournament.viewTournament,
         };
 
         // Update Firestore document

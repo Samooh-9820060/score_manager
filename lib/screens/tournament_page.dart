@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:score_manager/widgets/ScoreManagerDialog.dart';
 
 import '../models/Tournament.dart';
@@ -13,21 +14,51 @@ class TournamentListPage extends StatefulWidget {
 }
 
 class _TournamentListPageState extends State<TournamentListPage> {
-  late final Stream<QuerySnapshot> _tournamentStream;
+  late final Stream<List<Tournament>> _tournamentStream;
+  String? currentUserUid;
 
   @override
   void initState() {
     super.initState();
-    _tournamentStream =
-        FirebaseFirestore.instance.collection('tournaments').snapshots();
+    currentUserUid = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserUid != null) {
+      _tournamentStream = getTournamentsStream(currentUserUid!);
+    }
+  }
+
+  Stream<List<Tournament>> getTournamentsStream(String userId) {
+    var createdByStream = FirebaseFirestore.instance
+        .collection('tournaments')
+        .where('createdBy', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => Tournament.fromFirestore(doc)).toList());
+
+    var viewTournamentStream = FirebaseFirestore.instance
+        .collection('tournaments')
+        .where('viewTournament', arrayContains: userId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => Tournament.fromFirestore(doc)).toList());
+
+    return Rx.combineLatest2(createdByStream, viewTournamentStream, (List<Tournament> a, List<Tournament> b) {
+      // Combine lists and remove duplicates
+      var combinedMap = <String, Tournament>{};
+      for (var tournament in [...a, ...b]) {
+        combinedMap[tournament.id] = tournament;
+      }
+
+      // Convert to list and sort by createdDate in descending order
+      var combinedList = combinedMap.values.toList();
+      combinedList.sort((a, b) => b.createdDate.compareTo(a.createdDate));
+      return combinedList;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: StreamBuilder<QuerySnapshot>(
+      body: StreamBuilder<List<Tournament>>(
         stream: _tournamentStream,
-        builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+        builder: (BuildContext context, AsyncSnapshot<List<Tournament>> snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('Something went wrong'));
           }
@@ -36,13 +67,12 @@ class _TournamentListPageState extends State<TournamentListPage> {
             return Center(child: CircularProgressIndicator());
           }
 
-          if (snapshot.data!.docs.isEmpty) {
+          if (snapshot.data == null || snapshot.data!.isEmpty) {
             return Center(child: Text('You have not been in any tournaments'));
           }
 
           return ListView(
-            children: snapshot.data!.docs.map((DocumentSnapshot document) {
-              Tournament tournament = Tournament.fromFirestore(document);
+            children: snapshot.data!.map((Tournament tournament) {
               return TournamentCard(
                 tournament: tournament,
                 onEdit: () {
