@@ -50,11 +50,17 @@ class TournamentCard extends StatelessWidget {
                   child: const Text('Edit Tournament'),
                 ),
                 SimpleDialogOption(
-                  onPressed: () => onInsertGame,
+                  onPressed: () => {
+                    Navigator.of(context).pop(),
+                    onInsertGame(),
+                  },
                   child: const Text('Insert Game'),
                 ),
                 SimpleDialogOption(
-                  onPressed: () => onViewStats,
+                  onPressed: () => {
+                    Navigator.of(context).pop(),
+                    onViewStats(),
+                  },
                   child: const Text('View Stats'),
                 ),
               ],

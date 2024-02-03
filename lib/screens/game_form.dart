@@ -11,8 +11,9 @@ import '../services/TournamentService.dart';
 
 class AddGameForm extends StatefulWidget {
   final Tournament? tournament;
+  final Game? game;
 
-  AddGameForm({super.key, this.tournament});
+  const AddGameForm({super.key, this.tournament, this.game});
 
   @override
   _AddGameFormState createState() => _AddGameFormState();
@@ -110,10 +111,10 @@ class _AddGameFormState extends State<AddGameForm> {
           dateTime: gameDateTime,
           scores: scores,
           winnerName: winnerName,
-          createdDate: DateTime.now(),
+          createdDate: Timestamp.now(),
           createdBy: FirebaseAuth.instance.currentUser!.uid,
           lastModifiedBy: FirebaseAuth.instance.currentUser!.uid,
-          lastModifiedDate: DateTime.now(),
+          lastModifiedDate: Timestamp.now(),
         );
 
         await GameService().addGame(newGame);

@@ -6,9 +6,9 @@ class Game {
   final DateTime dateTime;
   final Map<String, String> scores;
   final String winnerName;
-  final DateTime createdDate;
+  final Timestamp? createdDate;
   final String createdBy;
-  final DateTime? lastModifiedDate;
+  final Timestamp? lastModifiedDate;
   final String? lastModifiedBy;
 
   Game({
@@ -32,12 +32,13 @@ class Game {
       dateTime: DateTime.parse(data['dateTime']),
       scores: Map<String, String>.from(data['scores']),
       winnerName: data['winnerName'],
-      createdDate: DateTime.parse(data['createdDate']),
+      createdDate: data['createdDate'],
       createdBy: data['createdBy'],
-      lastModifiedDate: DateTime.parse(data['lastModifiedDate']),
+      lastModifiedDate: data['lastModifiedDate'],
       lastModifiedBy: data['lastModifiedBy'],
     );
   }
+
 
   Map<String, dynamic> toMap() {
     return {

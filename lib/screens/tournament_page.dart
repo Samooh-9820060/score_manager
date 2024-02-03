@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:score_manager/screens/game_form.dart';
 import 'package:score_manager/widgets/ScoreManagerDialog.dart';
 
 import '../models/Tournament.dart';
@@ -62,7 +63,12 @@ class _TournamentListPageState extends State<TournamentListPage> {
                     showInfoDialog('Edit Tournament', 'You are not authorized to edit this tournament', false, context);
                   }
                 },
-                onInsertGame: () {},
+                onInsertGame: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => AddGameForm(tournament: tournament)),
+                  );
+                },
                 onViewStats: () {},
               );
             }).toList(),

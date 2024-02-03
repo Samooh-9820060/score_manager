@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:score_manager/screens/create_tournament.dart';
 import 'package:score_manager/screens/game_form.dart';
 import 'package:score_manager/screens/profile_page.dart';
+import 'package:score_manager/screens/scores_page.dart';
 import 'package:score_manager/screens/tournament_page.dart';
 
 enum FloatingActionButtonAction {
@@ -33,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   ];
 
   final List<Widget> _pages = [
-    SignInScreen(),
+    ScoresPage(),
     TournamentListPage(),
     ProfilePage(),
   ];
@@ -147,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               case FloatingActionButtonAction.addGame:
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => AddGameForm()),
+                  MaterialPageRoute(builder: (context) => const AddGameForm()),
                 );
                 break;
             }
