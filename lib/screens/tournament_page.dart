@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../models/Tournament.dart';
+import '../widgets/tournament_card.dart';
 import 'create_tournament.dart';
 
 class TournamentListPage extends StatefulWidget {
@@ -39,16 +40,7 @@ class _TournamentListPageState extends State<TournamentListPage> {
           return ListView(
             children: snapshot.data!.docs.map((DocumentSnapshot document) {
               Tournament tournament = Tournament.fromFirestore(document);
-              return ListTile(
-                title: Text(tournament.name),
-                subtitle: Text('${tournament.startDate} - ${tournament.endDate}'),
-                onTap: () {
-                  // Navigate to tournament details page
-                },
-                onLongPress: () {
-                  // Show options like edit, delete, etc.
-                },
-              );
+              return TournamentCard(tournament: tournament);
             }).toList(),
           );
         },

@@ -11,12 +11,14 @@ class Tournament {
   final List<int> pointValues;
   final DateTime createdDate;
   final String createdBy;
+  final int? winner;
 
   Tournament({
     required this.id,
     required this.name,
     this.startDate,
     this.endDate,
+    this.winner,
     this.participants = const [],
     required this.scoringMethod,
     required this.pointValues,
@@ -40,6 +42,7 @@ class Tournament {
       pointValues: List<int>.from(data['pointValues'] ?? []),
       createdDate: DateTime.parse(data['createdDate']),
       createdBy: data['createdBy'] ?? '',
+      winner: data['winner'] ?? null,
     );
   }
 
@@ -54,6 +57,7 @@ class Tournament {
       'pointValues': pointValues,
       'createdDate': createdDate.toIso8601String(),
       'createdBy': createdBy,
+      'winner': winner,
     };
   }
 }
