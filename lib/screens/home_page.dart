@@ -5,12 +5,13 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:score_manager/screens/SignIn.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:score_manager/screens/create_tournament.dart';
+import 'package:score_manager/screens/game_form.dart';
 import 'package:score_manager/screens/profile_page.dart';
 import 'package:score_manager/screens/tournament_page.dart';
 
 enum FloatingActionButtonAction {
   createTournament,
-  addScore,
+  addGame,
 }
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -143,8 +144,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   MaterialPageRoute(builder: (context) => TournamentCreationForm()),
                 );
                 break;
-              case FloatingActionButtonAction.addScore:
-              // Navigate to Add Score page or perform action
+              case FloatingActionButtonAction.addGame:
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AddGameForm()),
+                );
                 break;
             }
           },
@@ -157,10 +161,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
             const PopupMenuItem<FloatingActionButtonAction>(
-              value: FloatingActionButtonAction.addScore,
+              value: FloatingActionButtonAction.addGame,
               child: ListTile(
                 leading: Icon(Icons.add),
-                title: Text('Add Score'),
+                title: Text('Add Game'),
               ),
             ),
           ],

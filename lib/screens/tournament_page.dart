@@ -5,6 +5,7 @@ import 'package:rxdart/rxdart.dart';
 import 'package:score_manager/widgets/ScoreManagerDialog.dart';
 
 import '../models/Tournament.dart';
+import '../services/TournamentService.dart';
 import '../widgets/tournament_card.dart';
 import 'create_tournament.dart';
 
@@ -22,35 +23,8 @@ class _TournamentListPageState extends State<TournamentListPage> {
     super.initState();
     currentUserUid = FirebaseAuth.instance.currentUser?.uid;
     if (currentUserUid != null) {
-      _tournamentStream = getTournamentsStream(currentUserUid!);
+      _tournamentStream = TournamentService().getEditableTournamentsStream(currentUserUid!);
     }
-  }
-
-  Stream<List<Tournament>> getTournamentsStream(String userId) {
-    var createdByStream = FirebaseFirestore.instance
-        .collection('tournaments')
-        .where('createdBy', isEqualTo: userId)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => Tournament.fromFirestore(doc)).toList());
-
-    var viewTournamentStream = FirebaseFirestore.instance
-        .collection('tournaments')
-        .where('viewTournament', arrayContains: userId)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => Tournament.fromFirestore(doc)).toList());
-
-    return Rx.combineLatest2(createdByStream, viewTournamentStream, (List<Tournament> a, List<Tournament> b) {
-      // Combine lists and remove duplicates
-      var combinedMap = <String, Tournament>{};
-      for (var tournament in [...a, ...b]) {
-        combinedMap[tournament.id] = tournament;
-      }
-
-      // Convert to list and sort by createdDate in descending order
-      var combinedList = combinedMap.values.toList();
-      combinedList.sort((a, b) => b.createdDate.compareTo(a.createdDate));
-      return combinedList;
-    });
   }
 
   @override
