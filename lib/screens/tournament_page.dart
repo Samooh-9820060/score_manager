@@ -40,7 +40,17 @@ class _TournamentListPageState extends State<TournamentListPage> {
           return ListView(
             children: snapshot.data!.docs.map((DocumentSnapshot document) {
               Tournament tournament = Tournament.fromFirestore(document);
-              return TournamentCard(tournament: tournament);
+              return TournamentCard(
+                  tournament: tournament,
+                onEdit: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => TournamentCreationForm(tournament: tournament,))
+                  );
+                },
+                onInsertGame: () {},
+                onViewStats: () {},
+              );
             }).toList(),
           );
         },

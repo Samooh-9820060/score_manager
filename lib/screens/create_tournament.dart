@@ -6,39 +6,66 @@ import 'package:score_manager/models/Tournament.dart';
 import 'package:score_manager/widgets/ScoreManagerDialog.dart';
 
 import '../models/Participants.dart';
+import '../models/UserProfile.dart';
 
 extension StringExtension on String {
   String capitalize() {
-    return "${this[0].toUpperCase()}${this.substring(1)}";
+    return "${this[0].toUpperCase()}${substring(1)}";
   }
 }
 class TournamentCreationForm extends StatefulWidget {
+  final Tournament? tournament;
+
+  const TournamentCreationForm({Key? key, this.tournament}) : super(key: key);
+
   @override
-  _TournamentCreationFormState createState() => _TournamentCreationFormState();
+  TournamentCreationFormState createState() => TournamentCreationFormState();
 }
 
-class UserProfile {
-  final String id;
-  final String name;
-  final String? mail;
-  final String? profileImageURL;
-
-  UserProfile({this.id = '', required this.name, this.mail, this.profileImageURL});
-}
-
-class _TournamentCreationFormState extends State<TournamentCreationForm> {
+class TournamentCreationFormState extends State<TournamentCreationForm> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  TextEditingController _nameController = TextEditingController();
-  TextEditingController _startDateController = TextEditingController();
-  TextEditingController _endDateController = TextEditingController();
-  TextEditingController _participantController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _startDateController = TextEditingController();
+  final TextEditingController _endDateController = TextEditingController();
+  final TextEditingController _participantController = TextEditingController();
   List<Participant> _participants = [];
-
+  String mode = 'Create';
   String _scoringMethod = 'direct'; // 'points' or 'direct'
   List<int> _pointValues = List.filled(4, 0);
 
   List<UserProfile> _searchResults = []; // Update to use UserProfile
   bool _isSearching = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Check if a tournament is provided for updating
+    if (widget.tournament != null) {
+      mode = 'Update';
+      _nameController.text = widget.tournament!.name;
+      // Check for null start date and format it
+      if (widget.tournament!.startDate != null) {
+        _startDateController.text =
+            DateFormat('dd-MM-yyyy')
+                .format(widget.tournament!.startDate!);
+      } else {
+        _startDateController.text = '';
+      }
+
+      // Check for null end date and format it
+      if (widget.tournament!.endDate != null) {
+        _endDateController.text =
+            DateFormat('dd-MM-yyyy')
+                .format(widget.tournament!.endDate!);
+      } else {
+        _endDateController.text = '';
+      }
+      _participants = widget.tournament!.participants;
+      _scoringMethod = widget.tournament!.scoringMethod;
+      _pointValues = widget.tournament!.pointValues;
+    }
+  }
 
   void _searchUser(String query) async {
     if (query.isNotEmpty) {
@@ -62,7 +89,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
       var usernameQuerySnapshot = await FirebaseFirestore.instance
           .collection('users')
           .where('username', isGreaterThanOrEqualTo: query)
-          .where('username', isLessThan: query + 'z')
+          .where('username', isLessThan: '${query}z')
           .limit(5)
           .get();
 
@@ -70,7 +97,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
       var emailQuerySnapshot = await FirebaseFirestore.instance
           .collection('users')
           .where('email', isGreaterThanOrEqualTo: query)
-          .where('email', isLessThan: query + 'z')
+          .where('email', isLessThan: '${query}z')
           .limit(5)
           .get();
 
@@ -78,7 +105,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
       Map<String, UserProfile> combinedResults = {};
 
       for (var doc in usernameQuerySnapshot.docs) {
-        var data = doc.data() as Map<String, dynamic>;
+        var data = doc.data();
         combinedResults[doc.id] = UserProfile(
           id: doc.id,
           name: data['username'],
@@ -89,7 +116,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
 
       for (var doc in emailQuerySnapshot.docs) {
         if (!combinedResults.containsKey(doc.id)) {
-          var data = doc.data() as Map<String, dynamic>;
+          var data = doc.data();
           combinedResults[doc.id] = UserProfile(
             id: doc.id,
             name: data['username'],
@@ -109,7 +136,6 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
       return filteredResults.take(5).toList();
 
     } catch (e) {
-      print('Error querying users: $e');
       return [];
     }
   }
@@ -140,28 +166,15 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
     super.dispose();
   }
 
-  void _addParticipant() {
-    String participantName = _participantController.text.trim();
-    if (participantName.isEmpty || participantName.length < 5 || participantName.length > 15) {
-      showInfoDialog('Error', 'Participant name must be 5-15 characters long', false, context);
-      return;
-    }
-
-    if (_participants.any((participant) => participant.name == participantName)) {
-      showInfoDialog('Error', 'Participant name already exists', false, context);
-      return;
-    }
-
-    setState(() {
-      _participants.add(Participant(name: participantName, isRegisteredUser: false));
-      _participantController.clear();
-    });
-  }
-
   Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
+    DateTime? initialDate = DateTime.now();
+    if (controller.text.isNotEmpty) {
+      initialDate = DateFormat('dd-MM-yyyy').parse(controller.text);
+    }
+
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: initialDate,
       firstDate: DateTime(2000), // Adjust as needed
       lastDate: DateTime(2035), // Adjust as needed
     );
@@ -175,7 +188,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Tournament'),
+        title: Text('$mode Tournament'),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -203,21 +216,21 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
                   onTap: () => _selectDate(context, _startDateController),
                   readOnly: true, // Prevents keyboard from appearing
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 TextFormField(
                   controller: _endDateController,
                   decoration: customInputDecoration('End Date', Icons.date_range, isOptional: true),
                   onTap: () => _selectDate(context, _endDateController),
                   readOnly: true, // Prevents keyboard from appearing
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 Center(
                   child: ElevatedButton(
                     onPressed: () => _showGameSettingsDialog(),
-                    child: Text('Configure Point Settings'),
+                    child: const Text('Configure Point Settings'),
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 Row(
                   children: [
                     Expanded(
@@ -241,15 +254,15 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
                 Center(
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      primary: Theme.of(context).secondaryHeaderColor,
-                      padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                      backgroundColor: Theme.of(context).secondaryHeaderColor,
+                      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                     ),
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
-                        createTournament();
+                        mode == 'Create' ? createTournament() : updateTournament();
                       }
                     },
-                    child: const Text('Create Tournament'),
+                    child: Text('$mode Tournament'),
                   ),
                 ),
               ],
@@ -273,7 +286,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Point Settings'),
+          title: const Text('Point Settings'),
           content: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
               return SingleChildScrollView(
@@ -304,15 +317,15 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
                           keyboardType: TextInputType.number,
                         );
                       }),
-                    SizedBox(height: 20,),
+                    const SizedBox(height: 20,),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Evenly space the buttons
                       children: [
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            minimumSize: Size(120, 40), // Minimum button size
+                            minimumSize: const Size(120, 40), // Minimum button size
                           ),
-                          child: Text('Add'),
+                          child: const Text('Add'),
                           onPressed: () {
                             setState(() {
                               if (numberOfPlayers < 10) {
@@ -324,9 +337,9 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
                         ),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            minimumSize: Size(120, 40), // Minimum button size
+                            minimumSize: const Size(120, 40), // Minimum button size
                           ),
-                          child: Text('Remove'),
+                          child: const Text('Remove'),
                           onPressed: () {
                             setState(() {
                               if (numberOfPlayers > 1) {
@@ -347,9 +360,9 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
             Center(
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  minimumSize: Size(120, 40), // Minimum button size
+                  minimumSize: const Size(120, 40), // Minimum button size
                 ),
-                child: Text('Save'),
+                child: const Text('Save'),
                 onPressed: () {
                   setState(() {
                     _scoringMethod = scoringMethod;
@@ -369,9 +382,9 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
 
   Widget _buildSearchResults() {
     if (_isSearching) {
-      return Padding(
+      return const Padding(
         padding: EdgeInsets.symmetric(vertical: 10.0),
-        child: const Center(
+        child: Center(
             child: CircularProgressIndicator()
         ),
       );
@@ -386,7 +399,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
       return ListTile(
         leading: userProfile.profileImageURL != null
             ? CircleAvatar(backgroundImage: NetworkImage(userProfile.profileImageURL!))
-            : CircleAvatar(child: Icon(Icons.person)),
+            : const CircleAvatar(child: Icon(Icons.person)),
         title: Text(userProfile.name),
         subtitle: userProfile.mail != null ? Text(userProfile.mail!) : null,
         onTap: () {
@@ -399,7 +412,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
     // Option to add a local user
     if (_participantController.text.isNotEmpty) {
       resultWidgets.add(ListTile(
-        leading: CircleAvatar(child: Icon(Icons.person_add)),
+        leading: const CircleAvatar(child: Icon(Icons.person_add)),
         title: Text('Add "${_participantController.text}" as a local user'),
         onTap: () {
           _addLocalParticipant(_participantController.text);
@@ -446,18 +459,18 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
   Widget _buildParticipantList() {
     return ListView.builder(
       shrinkWrap: true, // Ensures the ListView only occupies the space it needs
-      physics: NeverScrollableScrollPhysics(), // Disables scrolling within the ListView
+      physics: const NeverScrollableScrollPhysics(), // Disables scrolling within the ListView
       itemCount: _participants.length,
       itemBuilder: (context, index) {
         var participant = _participants[index];
         return ListTile(
           leading: participant.profileImageURL != null
               ? CircleAvatar(backgroundImage: NetworkImage(participant.profileImageURL!))
-              : CircleAvatar(child: Icon(Icons.person)),
+              : const CircleAvatar(child: Icon(Icons.person)),
           title: Text(participant.name),
           subtitle: participant.mail != null ? Text(participant.mail!) : null,
           trailing: IconButton(
-            icon: Icon(Icons.edit),
+            icon: const Icon(Icons.edit),
             onPressed: () => _editParticipant(participant, index),
           ),
         );
@@ -466,7 +479,6 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
   }
 
   void _editParticipant(Participant participant, int index) {
-    print(participant.id);
     showDialog(
       context: context,
       builder: (context) {
@@ -477,7 +489,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
         bool isSearching = false;
 
         return AlertDialog(
-          title: Text('Edit Participant'),
+          title: const Text('Edit Participant'),
           content: StatefulBuilder(
             builder: (BuildContext innerContext, StateSetter setState) {
               void searchUser() async {
@@ -505,7 +517,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
                       decoration: InputDecoration(
                         labelText: 'Search User',
                         suffixIcon: IconButton(
-                          icon: Icon(Icons.search),
+                          icon: const Icon(Icons.search),
                           onPressed: searchUser,
                         ),
                       ),
@@ -519,7 +531,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
                           tileColor: isSelected ? Colors.grey[300] : null, // Highlight selected item
                           leading: userProfile.profileImageURL != null
                               ? CircleAvatar(backgroundImage: NetworkImage(userProfile.profileImageURL!))
-                              : CircleAvatar(child: Icon(Icons.person)),
+                              : const CircleAvatar(child: Icon(Icons.person)),
                           title: Text(userProfile.name),
                           subtitle: userProfile.mail != null ? Text(userProfile.mail!) : null,
                           onTap: () {
@@ -538,7 +550,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
           ),
           actions: <Widget>[
             TextButton(
-              child: Text('Save', style: TextStyle(color: Colors.blue)),
+              child: const Text('Save', style: TextStyle(color: Colors.blue)),
               onPressed: () {
                 bool isAppUser = selectedUserProfile != null;
                 bool isLocalUser = searchController.text.trim().isNotEmpty && selectedUserProfile == null;
@@ -559,7 +571,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
             ),
 
             TextButton(
-              child: Text('Delete', style: TextStyle(color: Colors.red)),
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
               onPressed: () {
                 setState(() {
                   _participants.removeAt(index);
@@ -568,7 +580,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
               },
             ),
             TextButton(
-              child: Text('Cancel', style: TextStyle(color: Colors.grey)),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
               onPressed: () {
                 Navigator.of(context).pop();
               },
@@ -617,7 +629,55 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
         showInfoDialog('Create Tournament', 'Error creating tournament: $e', false, context);
       }
     } else {
-      print('invalid');
+    }
+  }
+
+  void updateTournament() async {
+    if (_formKey.currentState!.validate()) {
+      try {
+        // Create a tournament object
+        DateTime? startDate;
+        DateTime? endDate;
+
+        if (_startDateController.text.isNotEmpty) {
+          startDate = DateFormat('dd-MM-yyyy').parse(_startDateController.text);
+        }
+        if (_endDateController.text.isNotEmpty) {
+          endDate = DateFormat('dd-MM-yyyy').parse(_endDateController.text);
+        }
+
+        Tournament currentTournament = Tournament(
+          id: widget.tournament!.id, // Use existing ID
+          name: _nameController.text.trim(),
+          startDate: startDate,
+          endDate: endDate,
+          participants: _participants,
+          scoringMethod: _scoringMethod,
+          pointValues: _pointValues,
+          createdDate: widget.tournament!.createdDate, // Use existing createdDate
+          createdBy: widget.tournament!.createdBy, // Use existing createdBy
+        );
+
+        // Convert the tournament object to a Map
+        Map<String, dynamic> tournamentData = {
+          'id': currentTournament.id,
+          'name': currentTournament.name,
+          'startDate': currentTournament.startDate?.toIso8601String(),
+          'endDate': currentTournament.endDate?.toIso8601String(),
+          'participants': currentTournament.participants.map((p) => p.toMap()).toList(),
+          'scoringMethod': currentTournament.scoringMethod,
+          'pointValues': currentTournament.pointValues,
+          'createdDate': currentTournament.createdDate.toIso8601String(),
+          'createdBy': currentTournament.createdBy,
+        };
+
+        // Update Firestore document
+        await FirebaseFirestore.instance.collection('tournaments').doc(currentTournament.id).update(tournamentData);
+
+        showInfoDialog('Update Tournament', 'Tournament updated successfully!', true, context);
+      } catch (e) {
+        showInfoDialog('Update Tournament', 'Error updating tournament: $e', false, context);
+      }
     }
   }
 }
