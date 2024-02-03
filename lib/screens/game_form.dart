@@ -1,8 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:score_manager/widgets/ScoreManagerDialog.dart';
 
+import '../models/Game.dart';
 import '../models/Tournament.dart';
+import '../services/GameService.dart';
 import '../services/TournamentService.dart';
 
 class AddGameForm extends StatefulWidget {
@@ -16,12 +20,15 @@ class AddGameForm extends StatefulWidget {
 
 class _AddGameFormState extends State<AddGameForm> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   TextEditingController _dateTimeController = TextEditingController();
   TextEditingController _timeController = TextEditingController();
   Map<String, TextEditingController> _scoreControllers = {};
   String? _selectedWinner;
   String? _selectedTournamentId;
   List<Tournament> availableTournaments = []; // List of available tournaments
+  late Tournament selectedTournament;
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? pickedDate = await showDatePicker(
@@ -63,15 +70,90 @@ class _AddGameFormState extends State<AddGameForm> {
 
     if (widget.tournament != null) {
       _selectedTournamentId = widget.tournament!.id;
+      selectedTournament = widget.tournament!;
       _initializeScoreControllers(widget.tournament!);
+    }
+  }
+
+  void _onAddGamePressed() async {
+    if (_formKey.currentState!.validate()) {
+      try {
+        String gameId = _firestore.collection('games').doc().id;
+        Map<String, String> scores = {};
+        String? winnerName;
+
+        for (var participant in selectedTournament.participants) {
+          String score = _scoreControllers[participant.name]!.text;
+          scores[participant.name] = score;
+
+          if (_selectedWinner == participant.name) {
+            winnerName = participant.name;
+          }
+        }
+
+        if (winnerName == null) {
+          print('No winner selected');
+          return;
+        }
+
+        // Convert the date and time to the correct format
+        String formattedDate = _dateTimeController.text.replaceAll('-', '/');
+        String formattedDateTime = '$formattedDate ${_timeController.text}';
+
+        // Parse the date and time
+        DateTime gameDateTime = DateFormat('dd/MM/yyyy HH:mm').parse(formattedDateTime);
+
+
+        Game newGame = Game(
+          id: gameId,
+          tournamentId: _selectedTournamentId!,
+          dateTime: gameDateTime,
+          scores: scores,
+          winnerName: winnerName,
+          createdDate: DateTime.now(),
+          createdBy: FirebaseAuth.instance.currentUser!.uid,
+          lastModifiedBy: FirebaseAuth.instance.currentUser!.uid,
+          lastModifiedDate: DateTime.now(),
+        );
+
+        await GameService().addGame(newGame);
+        showInfoDialog('Add Game', 'Game has been succesfully added', true, context);
+      } catch (e) {
+        showInfoDialog('Add Game', 'Error Adding Game: $e', true, context);
+      }
     }
   }
 
   void _initializeScoreControllers(Tournament tournament) {
     _scoreControllers.clear();
+    _selectedWinner = null;
+
     for (var participant in tournament.participants) {
-      _scoreControllers[participant.id == null ? participant.name : participant.name] = TextEditingController();
+      var controller = TextEditingController();
+      _scoreControllers[participant.name] = controller;
+
+      // Adding a listener to each controller
+      controller.addListener(() {
+        _updateWinner();
+      });
     }
+  }
+
+  void _updateWinner() {
+    int highestScore = -1;
+    String? highestScorerId;
+
+    _scoreControllers.forEach((key, controller) {
+      int? score = int.tryParse(controller.text);
+      if (score != null && score > highestScore) {
+        highestScore = score;
+        highestScorerId = key;
+      }
+    });
+
+    setState(() {
+      _selectedWinner = highestScorerId;
+    });
   }
 
   Future<void> _fetchTournaments() async {
@@ -79,11 +161,28 @@ class _AddGameFormState extends State<AddGameForm> {
     var stream = TournamentService().getEditableTournamentsStream(userId);
 
     stream.listen((tournaments) {
+      DateTime now = DateTime.now();
+      List<Tournament> activeTournaments = tournaments.where((tournament) {
+        return (tournament.startDate != null && tournament.startDate!.isBefore(now)) &&
+            (tournament.endDate == null || tournament.endDate!.isAfter(now));
+      }).toList();
+
       setState(() {
         availableTournaments = tournaments;
         if (widget.tournament != null) {
           _selectedTournamentId = widget.tournament!.id;
+          selectedTournament = widget.tournament!;
           _initializeScoreControllers(widget.tournament!);
+        } else if (activeTournaments.length == 1) {
+          // If there is only one active tournament, automatically select it
+          _selectedTournamentId = activeTournaments.first.id;
+          selectedTournament = activeTournaments.first;
+          _initializeScoreControllers(activeTournaments.first);
+        } else {
+          //just select a random tournament
+          _selectedTournamentId = availableTournaments.first.id;
+          selectedTournament = availableTournaments.first;
+          _initializeScoreControllers(availableTournaments.first);
         }
       });
     });
@@ -109,15 +208,13 @@ class _AddGameFormState extends State<AddGameForm> {
                     setState(() {
                       _selectedTournamentId = newValue;
                       // Find the selected tournament and initialize score controllers
-                      var selectedTournament = availableTournaments.firstWhere(
+                      selectedTournament = availableTournaments.firstWhere(
                             (tournament) => tournament.id == newValue,
                         //orElse: () => null,
                       );
                       _scoreControllers.clear();
-                      if (selectedTournament != null) {
-                        _initializeScoreControllers(selectedTournament);
-                      }
-                    });
+                      _initializeScoreControllers(selectedTournament);
+                                        });
                   },
                   items: availableTournaments.map<DropdownMenuItem<String>>((Tournament tournament) {
                     return DropdownMenuItem<String>(
@@ -213,7 +310,7 @@ class _AddGameFormState extends State<AddGameForm> {
                         .participants
                         .map<DropdownMenuItem<String>>((participant) {
                       return DropdownMenuItem<String>(
-                        value: participant.id ?? participant.name,
+                        value: participant.name,
                         child: Text(participant.name),
                       );
                     }).toList(),
@@ -225,9 +322,7 @@ class _AddGameFormState extends State<AddGameForm> {
                 SizedBox(height: 20),
                 Center(
                   child: ElevatedButton(
-                    onPressed: () {
-                      // Logic to handle game addition
-                    },
+                    onPressed: _onAddGamePressed,
                     child: const Text('Add Game'),
                   ),
                 ),
