@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:score_manager/widgets/ScoreManagerDialog.dart';
 
 import '../models/Tournament.dart';
 import '../widgets/tournament_card.dart';
@@ -16,7 +18,8 @@ class _TournamentListPageState extends State<TournamentListPage> {
   @override
   void initState() {
     super.initState();
-    _tournamentStream = FirebaseFirestore.instance.collection('tournaments').snapshots();
+    _tournamentStream =
+        FirebaseFirestore.instance.collection('tournaments').snapshots();
   }
 
   @override
@@ -41,12 +44,19 @@ class _TournamentListPageState extends State<TournamentListPage> {
             children: snapshot.data!.docs.map((DocumentSnapshot document) {
               Tournament tournament = Tournament.fromFirestore(document);
               return TournamentCard(
-                  tournament: tournament,
+                tournament: tournament,
                 onEdit: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => TournamentCreationForm(tournament: tournament,))
-                  );
+                  // Check if the current user is the creator of the tournament
+                  String currentUserUid = FirebaseAuth.instance.currentUser?.uid ?? "";
+                  if (tournament.createdBy == currentUserUid) {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => TournamentCreationForm(tournament: tournament))
+                    );
+                  } else {
+                    // Show an unauthorized message
+                    showInfoDialog('Edit Tournament', 'You are not authorized to edit this tournament', false, context);
+                  }
                 },
                 onInsertGame: () {},
                 onViewStats: () {},
@@ -54,17 +64,6 @@ class _TournamentListPageState extends State<TournamentListPage> {
             }).toList(),
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Navigate to tournament creation page
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => TournamentCreationForm()),
-          );
-        },
-        child: Icon(Icons.add),
-        tooltip: 'Create Tournament',
       ),
     );
   }

@@ -7,7 +7,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:score_manager/screens/create_tournament.dart';
 import 'package:score_manager/screens/tournament_page.dart';
 
-
+enum FloatingActionButtonAction {
+  createTournament,
+  addScore,
+}
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -113,6 +116,56 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         currentIndex: _bottomNavIndex,
         onTap: _onTabTapped,
         showUnselectedLabels: false,
+      ),
+      floatingActionButton: Container(
+        height: 56.0, // Standard FAB height
+        width: 56.0, // Standard FAB width
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Theme.of(context).primaryColor, // Or any other color you prefer
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 8.0,
+              spreadRadius: 3.0,
+            ),
+          ],
+        ),
+        child: PopupMenuButton<FloatingActionButtonAction>(
+          enableFeedback: true,
+          offset: Offset(0, -140),
+          onSelected: (FloatingActionButtonAction result) {
+            switch (result) {
+              case FloatingActionButtonAction.createTournament:
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => TournamentCreationForm()),
+                );
+                break;
+              case FloatingActionButtonAction.addScore:
+              // Navigate to Add Score page or perform action
+                break;
+            }
+          },
+          itemBuilder: (BuildContext context) => <PopupMenuEntry<FloatingActionButtonAction>>[
+            const PopupMenuItem<FloatingActionButtonAction>(
+              value: FloatingActionButtonAction.createTournament,
+              child: ListTile(
+                leading: Icon(Icons.create),
+                title: Text('Create Tournament'),
+              ),
+            ),
+            const PopupMenuItem<FloatingActionButtonAction>(
+              value: FloatingActionButtonAction.addScore,
+              child: ListTile(
+                leading: Icon(Icons.add),
+                title: Text('Add Score'),
+              ),
+            ),
+          ],
+          child: Icon(Icons.add, color: Colors.white),
+          tooltip: 'Options',
+        ),
       ),
     );
   }
