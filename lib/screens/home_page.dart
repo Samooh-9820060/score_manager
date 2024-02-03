@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:score_manager/screens/SignIn.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:score_manager/screens/create_tournament.dart';
+import 'package:score_manager/screens/profile_page.dart';
 import 'package:score_manager/screens/tournament_page.dart';
 
 enum FloatingActionButtonAction {
@@ -33,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final List<Widget> _pages = [
     SignInScreen(),
     TournamentListPage(),
-    TournamentCreationForm(),
+    ProfilePage(),
   ];
 
   @override

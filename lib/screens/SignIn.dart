@@ -66,6 +66,8 @@ class SignInScreenState extends State<SignInScreen>
         'email': email,
         'username': username,
         'created': DateTime.now(),
+        'allowTournamentAddition': true,
+        'allowStatsViewing': true,
       });
 
       final User? user = userCredential.user;
@@ -211,6 +213,8 @@ class SignInScreenState extends State<SignInScreen>
                     'username': username,
                     'profileImageUrl': user?.photoURL,
                     'created': DateTime.now(),
+                    'allowTournamentAddition': true,
+                    'allowStatsViewing': true,
                   });
                   usernameSet = true;
                   Navigator.of(context).pop();
