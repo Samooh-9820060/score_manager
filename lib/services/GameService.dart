@@ -17,6 +17,21 @@ class GameService {
     await _firestore.collection('games').doc(gameId).delete();
   }
 
+  Stream<List<Game>> fetchGamesStream(DateTime date, String tournamentId) {
+    var formatter = DateFormat('yyyy-MM-dd');
+    var formattedDate = formatter.format(date);
+    var startOfDayString = '${formattedDate}T00:00:00.000';
+    var endOfDayString = '${formattedDate}T23:59:59.999';
+
+    return _firestore.collection('games')
+        .where('tournamentId', isEqualTo: tournamentId)
+        .where('dateTime', isGreaterThanOrEqualTo: startOfDayString)
+        .where('dateTime', isLessThanOrEqualTo: endOfDayString)
+        .snapshots()
+        .map((snapshot) =>
+        snapshot.docs.map((doc) => Game.fromFirestore(doc)).toList());
+  }
+
   Future<List<Game>> fetchGamesForDate(DateTime date) async {
     List<Game> games = [];
     // Format the date to match the date format in Firestore
@@ -41,8 +56,8 @@ class GameService {
     // Format the start and end of day in the same format as the Firestore 'dateTime' field
     var formatter = DateFormat('yyyy-MM-dd');
     var formattedDate = formatter.format(date);
-    var startOfDayString = formattedDate + 'T00:00:00.000';
-    var endOfDayString = formattedDate + 'T23:59:59.999';
+    var startOfDayString = '${formattedDate}T00:00:00.000';
+    var endOfDayString = '${formattedDate}T23:59:59.999';
 
     var querySnapshot = await _firestore
         .collection('games')

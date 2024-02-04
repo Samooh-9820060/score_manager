@@ -1,7 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/Game.dart';
 import '../models/Tournament.dart';
 import '../services/GameService.dart';
@@ -24,8 +24,8 @@ class _ScoresPageState extends State<ScoresPage> {
   void initState() {
     super.initState();
     _fetchCurrentUserName();
+    //_fetchGamesForSelectedFilters();
     _fetchTournaments();
-    _fetchGamesForSelectedFilters();
   }
 
   void _fetchCurrentUserName() {
@@ -42,8 +42,9 @@ class _ScoresPageState extends State<ScoresPage> {
     stream.listen((tournamentsData) {
       setState(() {
         tournaments = tournamentsData;
-        if (tournaments.isNotEmpty) {
+        if (tournaments.isNotEmpty && selectedTournamentId == null) {
           selectedTournamentId = tournaments.first.id;
+          _fetchGamesForSelectedFilters(); // Fetch games for the first tournament
         }
       });
     });
@@ -78,12 +79,10 @@ class _ScoresPageState extends State<ScoresPage> {
       });
     }
 
-    setState(() {
-      participantScores = {
-        'scores': scores,
-        'wins': wins,
-      };
-    });
+    participantScores = {
+      'scores': scores,
+      'wins': wins,
+    };
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -109,19 +108,11 @@ class _ScoresPageState extends State<ScoresPage> {
       const DataColumn(label: Center(child: Text('Wins'))),
     ];
 
-    List<DataRow> rows = participantScores['scores'] != null
-        ? participantScores['scores']!.entries.map<DataRow>((entry) {
-            var wins = participantScores['wins'][entry.key] ?? 0;
-            return DataRow(
-              cells: [
-                DataCell(Text(entry.key, style: TextStyle(fontSize: 14))),
-                DataCell(Text(entry.value.toString(),
-                    style: const TextStyle(fontSize: 14))),
-                DataCell(Text(wins.toString(), style: TextStyle(fontSize: 14))),
-              ],
-            );
-          }).toList()
-        : [];
+    String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    if (selectedTournamentId != null && games.isEmpty) {
+      //_fetchGamesForSelectedFilters();
+    }
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -132,36 +123,22 @@ class _ScoresPageState extends State<ScoresPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  if (tournaments.isNotEmpty)
-                    Expanded(
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 12.0, vertical: 4.0),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.grey),
-                          color: Colors.white,
-                        ),
-                        child: DropdownButton<String>(
-                          isExpanded: true,
-                          value: selectedTournamentId,
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              selectedTournamentId = newValue;
-                              _fetchGamesForSelectedFilters();
-                            });
-                          },
-                          items: tournaments.map<DropdownMenuItem<String>>(
-                              (Tournament tournament) {
-                            return DropdownMenuItem<String>(
-                              value: tournament.id,
-                              child: Text(tournament.name),
-                            );
-                          }).toList(),
-                          underline: Container(), // Remove underline
-                        ),
-                      ),
-                    ),
+                  StreamBuilder<List<Tournament>>(
+                    stream: TournamentService()
+                        .getEditableTournamentsStream(userId),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Text('Error: ${snapshot.error}');
+                      }
+                      switch (snapshot.connectionState) {
+                        case ConnectionState.waiting:
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        default:
+                          return buildTournamentDropdown(snapshot.data ?? []);
+                      }
+                    },
+                  ),
                   IconButton(
                     icon: Icon(Icons.calendar_today),
                     onPressed: () => _selectDate(context),
@@ -184,20 +161,43 @@ class _ScoresPageState extends State<ScoresPage> {
                     borderRadius: BorderRadius.circular(20.0),
                     child: games.isEmpty
                         ? Container()
-                        : DataTable(
-                            columnSpacing: 10,
-                            dataRowHeight: 40,
-                            headingRowHeight: 48,
-                            headingRowColor:
-                                MaterialStateProperty.all(Colors.blueGrey[50]),
-                      headingTextStyle: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors
-                                  .black, // You can set your desired text color here
-                            ),
-                            columns: columns,
-                            rows: rows,
+                        : // StreamBuilder for pointFrequencyData
+                        StreamBuilder<DocumentSnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('pointFrequencyData')
+                                .doc(selectedTournamentId)
+                                .snapshots(),
+                            builder: (context, snapshot) {
+                              if (snapshot.hasError) {
+                                return Text('Error: ${snapshot.error}');
+                              }
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const Center(
+                                    child: CircularProgressIndicator());
+                              }
+
+                              // Fetch tournament data
+                              return FutureBuilder<Tournament?>(
+                                future: TournamentService().fetchTournamentById(
+                                    selectedTournamentId ?? ''),
+                                builder: (context, tournamentSnapshot) {
+                                  if (tournamentSnapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const Center(
+                                        child: CircularProgressIndicator());
+                                  }
+                                  if (tournamentSnapshot.hasError ||
+                                      tournamentSnapshot.data == null) {
+                                    return Text(
+                                        'Error fetching tournament data');
+                                  }
+
+                                  return buildScoresDataTable(snapshot.data,
+                                      columns, tournamentSnapshot.data!);
+                                },
+                              );
+                            },
                           ),
                   ),
                 ),
@@ -223,19 +223,109 @@ class _ScoresPageState extends State<ScoresPage> {
                   ? Center(
                       child: Text(
                           'No games played on ${DateFormat('dd-MM-yyyy').format(selectedDate)}'))
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                      // keeps it from scrolling independently
-                      itemCount: games.length,
-                      itemBuilder: (context, index) {
-                        return GameCard(game: games[index]);
+                  : StreamBuilder<List<Game>>(
+                      stream: GameService().fetchGamesStream(
+                          selectedDate, selectedTournamentId ?? ''),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          return Text('Error: ${snapshot.error}');
+                        }
+                        switch (snapshot.connectionState) {
+                          case ConnectionState.waiting:
+                            return const CircularProgressIndicator();
+                          default:
+                            games = snapshot.data ?? [];
+                            calculateScoresAndWins();
+                            return buildGamesList(
+                                games); // Implement this method
+                        }
                       },
                     ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget buildTournamentDropdown(List<Tournament> tournaments) {
+    List<DropdownMenuItem<String>> dropdownItems = tournaments
+        .map((tournament) => DropdownMenuItem<String>(
+              value: tournament.id,
+              child: Text(tournament.name),
+            ))
+        .toList();
+
+    return Flexible(
+      child: DropdownButton<String>(
+        isExpanded: true,
+        value: selectedTournamentId,
+        onChanged: (String? newValue) {
+          setState(() {
+            selectedTournamentId = newValue;
+            _fetchGamesForSelectedFilters();
+          });
+        },
+        items: dropdownItems,
+      ),
+    );
+  }
+
+  Widget buildGamesList(List<Game> games) {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
+      // keeps it from scrolling independently
+      itemCount: games.length,
+      itemBuilder: (context, index) {
+        Game game = games[index];
+        return GameCard(
+            game: game); // Implement GameCard according to your game model
+      },
+    );
+  }
+
+  Widget buildScoresDataTable(DocumentSnapshot? pointFrequencyData,
+      List<DataColumn> columns, Tournament tournament) {
+    // Check if there is data for the selected date and cast it to a Map
+    var snapshotData = pointFrequencyData?.data();
+    if (snapshotData is! Map<String, dynamic>) {
+      return Text('Invalid data format');
+    }
+
+    String formattedDateKey = DateFormat('yyyy-M-d').format(selectedDate);
+    var dailyData = snapshotData[formattedDateKey] as Map?;
+
+    if (dailyData == null) {
+      return Text('No data for $formattedDateKey');
+    }
+
+    List<DataRow> rows = [];
+    Map scores = dailyData['scores'] as Map<dynamic, dynamic>;
+    Map wins = dailyData['wins'] as Map<dynamic, dynamic>;
+
+    scores.forEach((index, score) {
+      int winCount = wins[index] ?? 0;
+      String participantName =
+          tournament.participants[int.parse(index.toString())].name;
+      rows.add(DataRow(
+        cells: [
+          DataCell(Text(participantName)),
+          DataCell(Text(score.toString())),
+          DataCell(Text(winCount.toString())),
+        ],
+      ));
+    });
+
+    return DataTable(
+      columnSpacing: 10,
+      dataRowHeight: 40,
+      headingRowHeight: 48,
+      headingRowColor: MaterialStateProperty.all(Colors.blueGrey[50]),
+      headingTextStyle: const TextStyle(
+          fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black),
+      columns: columns,
+      rows: rows,
     );
   }
 }
@@ -283,23 +373,32 @@ class GameCard extends StatelessWidget {
         );
       },
       onLongPress: () async {
-        final result = await showDialog<String>(
+        final result = await showDialog<bool>(
           context: context,
           builder: (BuildContext context) {
-            return SimpleDialog(
-              title: const Text('Choose an action'),
-              children: <Widget>[
-                SimpleDialogOption(
+            return AlertDialog(
+              title: const Text('Delete Game'),
+              content: const Text('Are you sure you want to delete this game?'),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
                   onPressed: () {
-                    Navigator.of(context).pop();
+                    Navigator.of(context).pop(true);
                     onDeleteGame(game.id);
                   },
-                  child: const Text('Delete Game'),
+                  child: const Text('Delete'),
                 ),
               ],
             );
           },
         );
+        if (result == true) {
+          // Perform the deletion if the user confirms
+          onDeleteGame(game.id);
+        }
       },
       child: Card(
         elevation: 2,
