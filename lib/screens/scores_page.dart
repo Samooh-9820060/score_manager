@@ -291,7 +291,6 @@ class GameCard extends StatelessWidget {
               ),
               SizedBox(height: 10),
               ...scoreWidgets,
-
             ],
           ),
         ),

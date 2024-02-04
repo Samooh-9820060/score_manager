@@ -8,6 +8,7 @@ class Tournament {
   final DateTime? endDate; // Made nullable
   final List<Participant> participants;
   final String scoringMethod;
+  final String? pointCalculationFrequency;
   final List<int> pointValues;
   final DateTime createdDate;
   final String createdBy;
@@ -22,6 +23,7 @@ class Tournament {
     this.winner,
     this.participants = const [],
     required this.scoringMethod,
+    this.pointCalculationFrequency,
     required this.pointValues,
     required this.createdDate,
     required this.createdBy,
@@ -47,6 +49,7 @@ class Tournament {
       endDate: data['endDate'] != null ? DateTime.parse(data['endDate']) : null,
       participants: participants,
       scoringMethod: data['scoringMethod'] ?? 'direct',
+      pointCalculationFrequency: data['pointCalculationFrequency'] ?? 'Daily',
       pointValues: List<int>.from(data['pointValues'] ?? []),
       createdDate: DateTime.parse(data['createdDate']),
       createdBy: data['createdBy'] ?? '',
@@ -63,6 +66,7 @@ class Tournament {
       'endDate': endDate?.toIso8601String(),
       'participants': participants.map((p) => p.toMap()).toList(),
       'scoringMethod': scoringMethod,
+      'pointCalculationFrequency': pointCalculationFrequency,
       'pointValues': pointValues,
       'createdDate': createdDate.toIso8601String(),
       'createdBy': createdBy,

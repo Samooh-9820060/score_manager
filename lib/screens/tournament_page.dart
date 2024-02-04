@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:score_manager/screens/game_form.dart';
+import 'package:score_manager/screens/view_stats.dart';
 import 'package:score_manager/widgets/ScoreManagerDialog.dart';
 
 import '../models/Tournament.dart';
@@ -69,7 +70,12 @@ class _TournamentListPageState extends State<TournamentListPage> {
                     MaterialPageRoute(builder: (context) => AddGameForm(tournament: tournament)),
                   );
                 },
-                onViewStats: () {},
+                onViewStats: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ViewStatsScreen(tournament: tournament,)),
+                  );
+                },
               );
             }).toList(),
           );

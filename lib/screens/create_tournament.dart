@@ -30,7 +30,8 @@ class TournamentCreationFormState extends State<TournamentCreationForm> {
   final TextEditingController _participantController = TextEditingController();
   List<Participant> _participants = [];
   String mode = 'Create';
-  String _scoringMethod = 'direct'; // 'points' or 'direct'
+  String _scoringMethod = 'direct';
+  String _pointCalculationFrequency = 'Daily';
   List<int> _pointValues = List.filled(4, 0);
 
   List<UserProfile> _searchResults = []; // Update to use UserProfile
@@ -283,6 +284,7 @@ class TournamentCreationFormState extends State<TournamentCreationForm> {
     );
 
     String scoringMethod = _scoringMethod;
+    String pointCalculationFrequency = 'Daily';
 
     showDialog(
       context: context,
@@ -310,6 +312,21 @@ class TournamentCreationFormState extends State<TournamentCreationForm> {
                       }).toList(),
                     ),
                     if (scoringMethod == 'points')
+                      DropdownButton<String>(
+                        value: pointCalculationFrequency,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            pointCalculationFrequency = newValue!;
+                          });
+                        },
+                        items: <String>['Daily', 'Monthly', 'Yearly']
+                            .map<DropdownMenuItem<String>>((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                      ),
                       ...List.generate(numberOfPlayers, (index) {
                         return TextField(
                           controller: pointControllers[index],
@@ -371,6 +388,7 @@ class TournamentCreationFormState extends State<TournamentCreationForm> {
                     _pointValues = pointControllers.map((controller) {
                       return int.tryParse(controller.text) ?? 0;
                     }).toList();
+                    _pointCalculationFrequency = pointCalculationFrequency;
                   });
                   Navigator.of(context).pop();
                 },
@@ -623,6 +641,7 @@ class TournamentCreationFormState extends State<TournamentCreationForm> {
           endDate: endDate,
           participants: _participants,
           scoringMethod: _scoringMethod,
+          pointCalculationFrequency: _pointCalculationFrequency,
           pointValues: _pointValues,
           createdDate: DateTime.now(),
           createdBy: FirebaseAuth.instance.currentUser!.uid,
@@ -637,6 +656,7 @@ class TournamentCreationFormState extends State<TournamentCreationForm> {
           'endDate': newTournament.endDate?.toIso8601String(),
           'participants': newTournament.participants.map((p) => p.toMap()).toList(),
           'scoringMethod': newTournament.scoringMethod,
+          'pointCalculationFrequency': newTournament.pointCalculationFrequency,
           'pointValues': newTournament.pointValues,
           'createdDate': newTournament.createdDate.toIso8601String(),
           'createdBy': newTournament.createdBy,
@@ -681,6 +701,7 @@ class TournamentCreationFormState extends State<TournamentCreationForm> {
           endDate: endDate,
           participants: _participants,
           scoringMethod: _scoringMethod,
+          pointCalculationFrequency: _pointCalculationFrequency,
           pointValues: _pointValues,
           createdDate: widget.tournament!.createdDate, // Use existing createdDate
           createdBy: widget.tournament!.createdBy,
@@ -695,6 +716,7 @@ class TournamentCreationFormState extends State<TournamentCreationForm> {
           'endDate': currentTournament.endDate?.toIso8601String(),
           'participants': currentTournament.participants.map((p) => p.toMap()).toList(),
           'scoringMethod': currentTournament.scoringMethod,
+          'pointCalculationFrequency': currentTournament.pointCalculationFrequency,
           'pointValues': currentTournament.pointValues,
           'createdDate': currentTournament.createdDate.toIso8601String(),
           'createdBy': currentTournament.createdBy,
