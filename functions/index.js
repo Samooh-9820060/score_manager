@@ -2,78 +2,75 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 admin.initializeApp();
 
+/**
+ * Gets the period key for a daily frequency.
+ * @param {Date} date - The date for the period.
+ * @return {string} The period key in YYYY-MM-DD format.
+ */
+function getDailyPeriodKey(date) {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  return `${year}-${month}-${day}`;
+}
+
 exports.updateTournamentScores = functions.firestore
     .document("games/{gameId}")
     .onWrite(async (change, context) => {
       const gameData = change.after.exists ? change.after.data() : null;
+      const previousGameData = change.before.exists ? change.before.data() : null;
       const tournamentId = gameData ? gameData.tournamentId : null;
-      const isUpdate = change.before.exists && change.after.exists;
-      const previousGameData = change.before.exists ? change.before.data() : {};
+      if (!tournamentId || !gameData) return;
 
-      if (!tournamentId) return;
+      const newDateKey = getDailyPeriodKey(new Date(gameData.dateTime));
+      const oldDateKey = previousGameData ? getDailyPeriodKey(new Date(previousGameData.dateTime)) : null;
+      const dateChanged = oldDateKey && newDateKey !== oldDateKey;
 
-      // Fetch tournament data
       const tournamentRef = admin.firestore().collection("tournaments").doc(tournamentId);
       const tournamentSnapshot = await tournamentRef.get();
       if (!tournamentSnapshot.exists) return;
       const tournamentData = tournamentSnapshot.data();
 
-      const participants = tournamentData.participants || [];
-      const scoresData = {};
-      const winsData = {};
+      const tournamentScoresRef = admin.firestore().collection("pointFrequencyData").doc(tournamentId);
+      const tournamentScoresSnapshot = await tournamentScoresRef.get();
+      const tournamentScoresData = tournamentScoresSnapshot.exists ? tournamentScoresSnapshot.data() : {};
 
-      if (isUpdate) {
-        // Logic to adjust scores and wins if it's an update
-        Object.keys(gameData.scores).forEach((participantName) => {
-          const newScore = parseInt(gameData.scores[participantName], 10) || 0;
-          const oldScore = parseInt(previousGameData.scores[participantName], 10) || 0;
-          const scoreDifference = newScore - oldScore;
-          const participantIndex = participants.findIndex((p) => p.name === participantName);
-
-          if (participantIndex !== -1) {
-            scoresData[participantIndex] = (scoresData[participantIndex] || 0) + scoreDifference;
-            // Update wins
-            if (previousGameData.winnerName !== gameData.winnerName) {
-              if (participantName === gameData.winnerName) {
-                winsData[participantIndex] = (winsData[participantIndex] || 0) + 1;
-              }
-              if (participantName === previousGameData.winnerName) {
-                winsData[participantIndex] = (winsData[participantIndex] || 0) - 1;
-              }
-            }
-          }
-        });
-      } else {
-        // Logic for new game
-        Object.keys(gameData.scores).forEach((participantName) => {
-          const score = parseInt(gameData.scores[participantName], 10) || 0;
-          const participantIndex = participants.findIndex((p) => p.name === participantName);
-
-          if (participantIndex !== -1) {
-            // Update scores
-            scoresData[participantIndex] = (scoresData[participantIndex] || 0) + score;
-
-            // Update wins
-            if (participantName === gameData.winnerName) {
-              winsData[participantIndex] = (winsData[participantIndex] || 0) + 1;
-            }
-          }
-        });
+      tournamentScoresData[newDateKey] = tournamentScoresData[newDateKey] || {scores: {}, wins: {}};
+      if (dateChanged) {
+        tournamentScoresData[oldDateKey] = tournamentScoresData[oldDateKey] || {scores: {}, wins: {}};
       }
 
-      // Update aggregated scores
-      const scoresRef = admin.firestore().collection("tournamentScores").doc(tournamentId);
-      const scoresSnapshot = await scoresRef.get();
-      const existingData = scoresSnapshot.exists ? scoresSnapshot.data() : {scores: {}, wins: {}};
+      tournamentData.participants.forEach((participant, index) => {
+        const newScore = parseInt(gameData.scores[participant.name], 10) || 0;
+        const previousScore = previousGameData ? parseInt(previousGameData.scores[participant.name], 10) || 0 : 0;
+        const scoreDifference = newScore - previousScore;
 
-      // Merge existing scores and wins with new data
-      Object.keys(scoresData).forEach((index) => {
-        existingData.scores[index] = (existingData.scores[index] || 0) + scoresData[index];
+        if (dateChanged) {
+          const previousScore = previousGameData ? parseInt(previousGameData.scores[participant.name], 10) : 0;
+
+          // Reverse the scores and wins on the old date
+          tournamentScoresData[oldDateKey].scores[index] = (tournamentScoresData[oldDateKey].scores[index] || 0) - previousScore;
+          if (previousGameData && previousGameData.winnerName === participant.name) {
+            tournamentScoresData[oldDateKey].wins[index] = (tournamentScoresData[oldDateKey].wins[index] || 0) - 1;
+          }
+
+          // Add the current game's scores and wins to the new date
+          tournamentScoresData[newDateKey].scores[index] = (tournamentScoresData[newDateKey].scores[index] || 0) + newScore;
+          if (gameData.winnerName === participant.name) {
+            tournamentScoresData[newDateKey].wins[index] = (tournamentScoresData[newDateKey].wins[index] || 0) + 1;
+          }
+        } else {
+          // Update scores and wins on the new date
+          tournamentScoresData[newDateKey].scores[index] = (tournamentScoresData[newDateKey].scores[index] || 0) + scoreDifference;
+          if (gameData.winnerName === participant.name) {
+            if (!previousGameData || previousGameData.winnerName !== participant.name) {
+              tournamentScoresData[newDateKey].wins[index] = (tournamentScoresData[newDateKey].wins[index] || 0) + 1;
+            }
+          } else if (previousGameData && previousGameData.winnerName === participant.name) {
+            tournamentScoresData[newDateKey].wins[index] = (tournamentScoresData[newDateKey].wins[index] || 0) - 1;
+          }
+        }
       });
 
-      Object.keys(winsData).forEach((index) => {
-        existingData.wins[index] = (existingData.wins[index] || 0) + winsData[index];
-      });
-
-      await scoresRef.set(existingData, {merge: true});
+      await tournamentScoresRef.set(tournamentScoresData, {merge: true});
     });

@@ -78,7 +78,6 @@ class _AddGameFormState extends State<AddGameForm> {
       mode = 'Update';
       _dateTimeController.text = DateFormat('dd-MM-yyyy').format(widget.game!.dateTime);
       _timeController.text = DateFormat('HH:mm').format(widget.game!.dateTime);
-      _selectedWinner = widget.game!.winnerName;
       _selectedTournamentId = widget.game!.tournamentId;
 
       if (_selectedTournamentId != null) {
@@ -88,6 +87,7 @@ class _AddGameFormState extends State<AddGameForm> {
               selectedTournament = fetchedTournament;
               // Initialize score controllers with existing game scores
               _initializeScoreControllersWithGameScores(fetchedTournament, widget.game!.scores);
+              _selectedWinner = widget.game!.winnerName;
             });
           }
         });
