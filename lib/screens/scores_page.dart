@@ -240,6 +240,14 @@ class _ScoresPageState extends State<ScoresPage> {
   }
 }
 
+void onDeleteGame(String gameId) async {
+  // Instantiate your GameService
+  var gameService = GameService();
+
+  // Call the deleteGame method
+  await gameService.deleteGame(gameId);
+}
+
 class GameCard extends StatelessWidget {
   final Game game;
 
@@ -274,6 +282,25 @@ class GameCard extends StatelessWidget {
           ),
         );
       },
+      onLongPress: () async {
+        final result = await showDialog<String>(
+          context: context,
+          builder: (BuildContext context) {
+            return SimpleDialog(
+              title: const Text('Choose an action'),
+              children: <Widget>[
+                SimpleDialogOption(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    onDeleteGame(game.id);
+                  },
+                  child: const Text('Delete Game'),
+                ),
+              ],
+            );
+          },
+        );
+      },
       child: Card(
         elevation: 2,
         margin: EdgeInsets.symmetric(vertical: 5, horizontal: 0),
@@ -286,7 +313,7 @@ class GameCard extends StatelessWidget {
                 'Date Time: ${DateFormat('dd-MM-yyyy HH:mm').format(game.dateTime)}',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey, // You can choose a color for the datetime text
+                  color: Colors.grey,
                 ),
               ),
               SizedBox(height: 10),

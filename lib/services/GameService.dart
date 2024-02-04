@@ -13,6 +13,10 @@ class GameService {
     await _firestore.collection('games').doc(game.id).update(game.toMap());
   }
 
+  Future<void> deleteGame(String gameId) async {
+    await _firestore.collection('games').doc(gameId).delete();
+  }
+
   Future<List<Game>> fetchGamesForDate(DateTime date) async {
     List<Game> games = [];
     // Format the date to match the date format in Firestore

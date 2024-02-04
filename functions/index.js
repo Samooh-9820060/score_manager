@@ -74,3 +74,34 @@ exports.updateTournamentScores = functions.firestore
 
       await tournamentScoresRef.set(tournamentScoresData, {merge: true});
     });
+
+exports.handleGameDeletion = functions.firestore
+    .document("games/{gameId}")
+    .onDelete(async (snapshot, context) => {
+      const deletedGameData = snapshot.data();
+      const tournamentId = deletedGameData.tournamentId;
+      if (!tournamentId) return;
+
+      const dateKey = getDailyPeriodKey(new Date(deletedGameData.dateTime));
+
+      const tournamentRef = admin.firestore().collection("tournaments").doc(tournamentId);
+      const tournamentSnapshot = await tournamentRef.get();
+      if (!tournamentSnapshot.exists) return;
+      const tournamentData = tournamentSnapshot.data();
+
+      const tournamentScoresRef = admin.firestore().collection("pointFrequencyData").doc(tournamentId);
+      const tournamentScoresSnapshot = await tournamentScoresRef.get();
+      const tournamentScoresData = tournamentScoresSnapshot.exists ? tournamentScoresSnapshot.data() : {};
+
+      if (tournamentScoresData[dateKey]) {
+        tournamentData.participants.forEach((participant, index) => {
+          const previousScore = parseInt(deletedGameData.scores[participant.name], 10) || 0;
+          tournamentScoresData[dateKey].scores[index] = Math.max(0, (tournamentScoresData[dateKey].scores[index] || 0) - previousScore);
+          if (deletedGameData.winnerName === participant.name) {
+            tournamentScoresData[dateKey].wins[index] = Math.max(0, (tournamentScoresData[dateKey].wins[index] || 0) - 1);
+          }
+        });
+      }
+
+      await tournamentScoresRef.set(tournamentScoresData, {merge: true});
+    });
