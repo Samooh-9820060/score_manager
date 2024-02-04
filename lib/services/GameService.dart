@@ -9,6 +9,10 @@ class GameService {
     await _firestore.collection('games').doc(game.id).set(game.toMap());
   }
 
+  Future<void> updateGame(Game game) async {
+    await _firestore.collection('games').doc(game.id).update(game.toMap());
+  }
+
   Future<List<Game>> fetchGamesForDate(DateTime date) async {
     List<Game> games = [];
     // Format the date to match the date format in Firestore
@@ -41,6 +45,7 @@ class GameService {
         .where('tournamentId', isEqualTo: tournamentId)
         .where('dateTime', isGreaterThanOrEqualTo: startOfDayString)
         .where('dateTime', isLessThanOrEqualTo: endOfDayString)
+        .orderBy('dateTime', descending: true)
         .get();
 
     return querySnapshot.docs.map((doc) => Game.fromFirestore(doc)).toList();

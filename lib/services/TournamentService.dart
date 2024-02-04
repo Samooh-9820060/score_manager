@@ -29,5 +29,17 @@ class TournamentService {
     });
   }
 
-// Other Firestore tournament-related methods can be added here
+  Future<Tournament?> fetchTournamentById(String tournamentId) async {
+    try {
+      var docSnapshot = await _firestore.collection('tournaments').doc(tournamentId).get();
+      if (docSnapshot.exists) {
+        return Tournament.fromFirestore(docSnapshot);
+      }
+    } catch (e) {
+      // Handle errors or log them
+      print('Error fetching tournament: $e');
+    }
+    return null;
+  }
+
 }

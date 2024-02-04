@@ -31,10 +31,17 @@ class _AddGameFormState extends State<AddGameForm> {
   List<Tournament> availableTournaments = []; // List of available tournaments
   late Tournament selectedTournament;
 
+  String mode = 'Create';
+
   Future<void> _selectDate(BuildContext context) async {
+    DateTime? initialDate = DateTime.now();
+    if (_dateTimeController.text.isNotEmpty) {
+      initialDate = DateFormat('dd-MM-yyyy').parse(_dateTimeController.text);
+    }
+
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: initialDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2030),
     );
@@ -44,9 +51,18 @@ class _AddGameFormState extends State<AddGameForm> {
   }
 
   Future<void> _selectTime(BuildContext context) async {
+    TimeOfDay? initialTime = TimeOfDay.now();
+    if (_timeController.text.isNotEmpty) {
+      List<String> parts = _timeController.text.split(':');
+      if (parts.length == 2) {
+        int hour = int.tryParse(parts[0]) ?? 0;
+        int minute = int.tryParse(parts[1]) ?? 0;
+        initialTime = TimeOfDay(hour: hour, minute: minute);
+      }
+    }
     final TimeOfDay? pickedTime = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: initialTime,
     );
     if (pickedTime != null) {
       _timeController.text = pickedTime.format(context);
@@ -56,23 +72,113 @@ class _AddGameFormState extends State<AddGameForm> {
   @override
   void initState() {
     super.initState();
-    // Fetch available tournaments and set the default tournament if provided
     _fetchTournaments();
 
-    // Schedule a post-frame callback to set initial values
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        setState(() {
-          _dateTimeController.text = DateFormat('dd-MM-yyyy').format(DateTime.now());
-          _timeController.text = TimeOfDay.now().format(context);
+    if (widget.game != null) {
+      mode = 'Update';
+      _dateTimeController.text = DateFormat('dd-MM-yyyy').format(widget.game!.dateTime);
+      _timeController.text = DateFormat('HH:mm').format(widget.game!.dateTime);
+      _selectedWinner = widget.game!.winnerName;
+      _selectedTournamentId = widget.game!.tournamentId;
+
+      if (_selectedTournamentId != null) {
+        TournamentService().fetchTournamentById(_selectedTournamentId!).then((fetchedTournament) {
+          if (mounted && fetchedTournament != null) {
+            setState(() {
+              selectedTournament = fetchedTournament;
+              // Initialize score controllers with existing game scores
+              _initializeScoreControllersWithGameScores(fetchedTournament, widget.game!.scores);
+            });
+          }
         });
       }
-    });
+    } else {
+      // Schedule a post-frame callback to set initial values
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _dateTimeController.text = DateFormat('dd-MM-yyyy').format(DateTime.now());
+            _timeController.text = TimeOfDay.now().format(context);
+          });
+        }
+      });
 
-    if (widget.tournament != null) {
-      _selectedTournamentId = widget.tournament!.id;
-      selectedTournament = widget.tournament!;
-      _initializeScoreControllers(widget.tournament!);
+      if (widget.tournament != null) {
+        _selectedTournamentId = widget.tournament!.id;
+        selectedTournament = widget.tournament!;
+        _initializeScoreControllers(widget.tournament!);
+      }
+    }
+  }
+
+  void _initializeScoreControllersWithGameScores(Tournament tournament, Map<String, String> gameScores) {
+    _scoreControllers.clear();
+    _selectedWinner = null;
+
+    for (var participant in tournament.participants) {
+      var controller = TextEditingController(text: gameScores[participant.name] ?? '');
+      _scoreControllers[participant.name] = controller;
+
+      // Adding a listener to each controller
+      controller.addListener(() {
+        _updateWinner();
+      });
+    }
+
+    // Update the winner based on the initial scores
+    _updateWinner();
+  }
+
+  void _onUpdateGamePressed() async {
+    if (_formKey.currentState!.validate()) {
+      try {
+        Map<String, String> scores = {};
+        String? winnerName;
+
+        for (var participant in selectedTournament.participants) {
+          String score = _scoreControllers[participant.name]!.text;
+          scores[participant.name] = score;
+
+          if (_selectedWinner == participant.name) {
+            winnerName = participant.name;
+          }
+        }
+
+        if (winnerName == null) {
+          print('No winner selected');
+          return;
+        }
+
+        // Debug print statements to check the formats
+        print("Date input: ${_dateTimeController.text}");
+        print("Time input: ${_timeController.text}");
+
+        // Correct the parsing format
+        String formattedDateTime = '${_dateTimeController.text} ${_timeController.text}';
+        DateTime gameDateTime = DateFormat('dd-MM-yyyy HH:mm').parse(formattedDateTime);
+
+        print("Parsed DateTime: $gameDateTime");
+
+
+        Game updatedGame = Game(
+          id: widget.game!.id, // Use the existing game's ID
+          tournamentId: _selectedTournamentId!,
+          dateTime: gameDateTime,
+          scores: scores,
+          winnerName: winnerName,
+          // Preserve the original creation details
+          createdDate: widget.game!.createdDate,
+          createdBy: widget.game!.createdBy,
+          // Update the last modified details
+          lastModifiedBy: FirebaseAuth.instance.currentUser!.uid,
+          lastModifiedDate: Timestamp.now(),
+        );
+
+        await GameService().updateGame(updatedGame);
+        showInfoDialog('Update Game', 'Game has been successfully updated', true, context);
+      } catch (e) {
+        showInfoDialog('Update Game', 'Error Updating Game: $e', true, context);
+      }
     }
   }
 
@@ -193,7 +299,7 @@ class _AddGameFormState extends State<AddGameForm> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Add Game'),
+        title: mode == 'Create' ? Text('Add Game') : Text('Update Game'),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -323,8 +429,8 @@ class _AddGameFormState extends State<AddGameForm> {
                 SizedBox(height: 20),
                 Center(
                   child: ElevatedButton(
-                    onPressed: _onAddGamePressed,
-                    child: const Text('Add Game'),
+                    onPressed: mode == 'Create' ? _onAddGamePressed : _onUpdateGamePressed,
+                    child: mode == 'Create' ? Text('Add Game') : Text('Update Game'),
                   ),
                 ),
               ],

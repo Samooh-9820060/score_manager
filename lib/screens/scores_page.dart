@@ -6,6 +6,7 @@ import '../models/Game.dart';
 import '../models/Tournament.dart';
 import '../services/GameService.dart';
 import '../services/TournamentService.dart';
+import 'game_form.dart';
 
 class ScoresPage extends StatefulWidget {
   @override
@@ -265,25 +266,34 @@ class GameCard extends StatelessWidget {
       );
     }).toList();
 
-    return Card(
-      elevation: 2,
-      margin: EdgeInsets.symmetric(vertical: 5, horizontal: 0),
-      child: Padding(
-        padding: EdgeInsets.all(8.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Date Time: ${DateFormat('dd-MM-yyyy HH:mm').format(game.dateTime)}',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey, // You can choose a color for the datetime text
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => AddGameForm(game: game),
+          ),
+        );
+      },
+      child: Card(
+        elevation: 2,
+        margin: EdgeInsets.symmetric(vertical: 5, horizontal: 0),
+        child: Padding(
+          padding: EdgeInsets.all(8.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Date Time: ${DateFormat('dd-MM-yyyy HH:mm').format(game.dateTime)}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey, // You can choose a color for the datetime text
+                ),
               ),
-            ),
-            SizedBox(height: 10),
-            ...scoreWidgets,
+              SizedBox(height: 10),
+              ...scoreWidgets,
 
-          ],
+            ],
+          ),
         ),
       ),
     );
