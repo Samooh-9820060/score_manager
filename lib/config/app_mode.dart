@@ -1,1 +1,1 @@
-bool isDebugMode = true;
+bool isDebugMode = false;
