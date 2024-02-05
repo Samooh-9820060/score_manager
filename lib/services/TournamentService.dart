@@ -42,4 +42,24 @@ class TournamentService {
     return null;
   }
 
+  Future<void> deleteTournament(String tournamentId) async {
+    try {
+      // Delete tournament
+      await _firestore.collection('tournaments').doc(tournamentId).delete();
+
+      // Additional clean-up if necessary, e.g., delete associated games
+      // Example: Delete games associated with the tournament
+      var gamesSnapshot = await _firestore.collection('games')
+          .where('tournamentId', isEqualTo: tournamentId)
+          .get();
+
+      for (var doc in gamesSnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+    } catch (e) {
+      print('Error deleting tournament: $e');
+      // Handle errors or log them
+    }
+  }
 }

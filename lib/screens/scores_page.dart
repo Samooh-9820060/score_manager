@@ -53,13 +53,18 @@ class _ScoresPageState extends State<ScoresPage> {
   void _fetchGamesForSelectedFilters() async {
     if (selectedTournamentId != null) {
       var fetchedGames = await GameService().fetchGamesForDateAndTournament(
-          selectedDate, selectedTournamentId!); // Implement this method
+          selectedDate, selectedTournamentId!);
+
+      // Sort the fetched games in descending order by dateTime
+      fetchedGames.sort((a, b) => b.dateTime.compareTo(a.dateTime));
+
       setState(() {
         games = fetchedGames;
         calculateScoresAndWins();
       });
     }
   }
+
 
   Map<String, dynamic> participantScores = {};
 
@@ -103,9 +108,9 @@ class _ScoresPageState extends State<ScoresPage> {
   @override
   Widget build(BuildContext context) {
     List<DataColumn> columns = [
-      const DataColumn(label: Center(child: Text('Participant'))),
-      const DataColumn(label: Center(child: Text('Points'))),
-      const DataColumn(label: Center(child: Text('Wins'))),
+      const DataColumn(label: Text('Participant')),
+      const DataColumn(label: Center(child: Text('Points')), numeric: true),
+      const DataColumn(label: Center(child: Text('Wins')), numeric: true),
     ];
 
     String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
@@ -311,14 +316,14 @@ class _ScoresPageState extends State<ScoresPage> {
       rows.add(DataRow(
         cells: [
           DataCell(Text(participantName)),
-          DataCell(Text(score.toString())),
-          DataCell(Text(winCount.toString())),
+          DataCell(Center(child: Text(score.toString(), textAlign: TextAlign.center,))),
+          DataCell(Center(child: Text(winCount.toString(), textAlign: TextAlign.center))),
         ],
       ));
     });
 
     return DataTable(
-      columnSpacing: 10,
+      columnSpacing: 40,
       dataRowHeight: 40,
       headingRowHeight: 48,
       headingRowColor: MaterialStateProperty.all(Colors.blueGrey[50]),

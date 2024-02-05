@@ -76,6 +76,24 @@ class _TournamentListPageState extends State<TournamentListPage> {
                     MaterialPageRoute(builder: (context) => ViewStatsScreen(tournament: tournament,)),
                   );
                 },
+                onDeleteTournament: () async {
+                  if (tournament.createdBy != currentUserUid) {
+                    showInfoDialog('Delete Tournament', 'Only the creator can delete the tournament', false, context);
+                    return;
+                  }
+
+                  // Show a confirmation dialog before deleting
+                  bool confirmDelete = await showConfirmDialog(
+                      'Delete Tournament',
+                      'Are you sure you want to delete this tournament? This will delete all associated games as well!',
+                      context
+                  );
+
+                  if (confirmDelete) {
+                    await TournamentService().deleteTournament(tournament.id);
+                    showInfoDialog('Delete Tournament', 'Tournament has been deleted with all associated games', false, context);
+                  }
+                },
               );
             }).toList(),
           );

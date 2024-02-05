@@ -183,6 +183,10 @@ class _AddGameFormState extends State<AddGameForm> {
   }
 
   void _onAddGamePressed() async {
+    if (_selectedTournamentId == null) {
+      showInfoDialog('Add Game', 'Select a tournament', false, context);
+      return;
+    }
     if (_formKey.currentState!.validate()) {
       try {
         String gameId = _firestore.collection('games').doc().id;
@@ -286,10 +290,12 @@ class _AddGameFormState extends State<AddGameForm> {
           selectedTournament = activeTournaments.first;
           _initializeScoreControllers(activeTournaments.first);
         } else {
-          //just select a random tournament
-          _selectedTournamentId = availableTournaments.first.id;
-          selectedTournament = availableTournaments.first;
-          _initializeScoreControllers(availableTournaments.first);
+          if (availableTournaments.isNotEmpty) {
+            //just select a random tournament
+            _selectedTournamentId = availableTournaments.first.id;
+            selectedTournament = availableTournaments.first;
+            _initializeScoreControllers(availableTournaments.first);
+          }
         }
       });
     });

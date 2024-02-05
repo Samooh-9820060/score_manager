@@ -27,6 +27,7 @@ class GameService {
         .where('tournamentId', isEqualTo: tournamentId)
         .where('dateTime', isGreaterThanOrEqualTo: startOfDayString)
         .where('dateTime', isLessThanOrEqualTo: endOfDayString)
+        .orderBy('dateTime', descending: true)
         .snapshots()
         .map((snapshot) =>
         snapshot.docs.map((doc) => Game.fromFirestore(doc)).toList());

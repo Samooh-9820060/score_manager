@@ -9,12 +9,14 @@ class TournamentCard extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onInsertGame;
   final VoidCallback onViewStats;
+  final VoidCallback onDeleteTournament;
 
   TournamentCard({
     required this.tournament,
     required this.onEdit,
     required this.onInsertGame,
     required this.onViewStats,
+    required this.onDeleteTournament,
   });
 
   String formatDate(DateTime? date) {
@@ -62,6 +64,13 @@ class TournamentCard extends StatelessWidget {
                     onViewStats(),
                   },
                   child: const Text('View Stats'),
+                ),
+                SimpleDialogOption(
+                  onPressed: () => {
+                    Navigator.of(context).pop(),
+                    onDeleteTournament(),
+                  },
+                  child: const Text('Delete Tournament'),
                 ),
               ],
             );
