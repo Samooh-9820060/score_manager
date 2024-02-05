@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:score_manager/screens/SignIn.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:score_manager/screens/about_us.dart';
+import 'package:score_manager/screens/contact_us.dart';
 import 'package:score_manager/screens/create_tournament.dart';
 import 'package:score_manager/screens/game_form.dart';
 import 'package:score_manager/screens/profile_page.dart';
@@ -14,6 +16,7 @@ enum FloatingActionButtonAction {
   createTournament,
   addGame,
 }
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -91,17 +94,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           },
         ),
         actions: [
-          IconButton(
+          /*IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
               await GoogleSignIn().signOut();
               Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const SignInScreen()));
             },
-          ),
+          ),*/
         ],
       ),
-      body:  PageView(
+      body: PageView(
         controller: _pageController,
         children: _pages,
         onPageChanged: (index) {
@@ -113,7 +116,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       bottomNavigationBar: BottomNavigationBar(
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.score), label: 'Scores'),
-          BottomNavigationBarItem(icon: Icon(Icons.sports_tennis), label: 'Tournaments'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.sports_tennis), label: 'Tournaments'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
         currentIndex: _bottomNavIndex,
@@ -125,7 +129,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         width: 56.0, // Standard FAB width
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Theme.of(context).primaryColor, // Or any other color you prefer
+          color:
+              Theme.of(context).primaryColor, // Or any other color you prefer
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.2),
@@ -142,7 +147,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               case FloatingActionButtonAction.createTournament:
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => TournamentCreationForm()),
+                  MaterialPageRoute(
+                      builder: (context) => TournamentCreationForm()),
                 );
                 break;
               case FloatingActionButtonAction.addGame:
@@ -153,7 +159,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 break;
             }
           },
-          itemBuilder: (BuildContext context) => <PopupMenuEntry<FloatingActionButtonAction>>[
+          itemBuilder: (BuildContext context) =>
+              <PopupMenuEntry<FloatingActionButtonAction>>[
             const PopupMenuItem<FloatingActionButtonAction>(
               value: FloatingActionButtonAction.createTournament,
               child: ListTile(
@@ -171,6 +178,74 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ],
           child: Icon(Icons.add, color: Colors.white),
           tooltip: 'Options',
+        ),
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AutoSizeText(
+                    'Welcome,',
+                    style: TextStyle(color: Colors.white, fontSize: 24),
+                    maxLines: 1,
+                  ),
+                  AutoSizeText(
+                    '$username',
+                    style: TextStyle(color: Colors.white, fontSize: 24),
+                    maxLines: 1,
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.info_outline),
+              title: Text('About Us'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => AboutUsPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.contact_phone),
+              title: Text('Contact Us'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => ContactUsPage()),
+                );
+              },
+            ),
+            /*ListTile(
+              leading: Icon(Icons.settings),
+              title: Text('Settings'),
+              onTap: () {
+                // Handle Settings Navigation
+              },
+            ),*/
+            Divider(),
+            ListTile(
+              leading: Icon(Icons.exit_to_app),
+              title: Text('Logout'),
+              onTap: () async {
+                await FirebaseAuth.instance.signOut();
+                await GoogleSignIn().signOut();
+                Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const SignInScreen()));
+              },
+            ),
+          ],
         ),
       ),
     );
