@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:score_manager/screens/add_manual_score.dart';
 
 import '../models/Participants.dart';
 import '../models/Tournament.dart';
@@ -8,6 +9,7 @@ class TournamentCard extends StatelessWidget {
   final Tournament tournament;
   final VoidCallback onEdit;
   final VoidCallback onInsertGame;
+  final VoidCallback insertOtherScore;
   final VoidCallback onViewStats;
   final VoidCallback onDeleteTournament;
 
@@ -15,6 +17,7 @@ class TournamentCard extends StatelessWidget {
     required this.tournament,
     required this.onEdit,
     required this.onInsertGame,
+    required this.insertOtherScore,
     required this.onViewStats,
     required this.onDeleteTournament,
   });
@@ -57,6 +60,13 @@ class TournamentCard extends StatelessWidget {
                     onInsertGame(),
                   },
                   child: const Text('Insert Game'),
+                ),
+                SimpleDialogOption(
+                  onPressed: () => {
+                    Navigator.of(context).pop(),
+                    insertOtherScore(),
+                  },
+                  child: const Text('Insert Other Scores / Wins'),
                 ),
                 SimpleDialogOption(
                   onPressed: () => {
