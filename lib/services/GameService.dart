@@ -70,4 +70,13 @@ class GameService {
 
     return querySnapshot.docs.map((doc) => Game.fromFirestore(doc)).toList();
   }
+
+  Future<List<Game>> fetchAllGamesForTournament(String tournamentId) async {
+    var querySnapshot = await _firestore.collection('games')
+        .where('tournamentId', isEqualTo: tournamentId)
+        .orderBy('dateTime')
+        .get();
+
+    return querySnapshot.docs.map((doc) => Game.fromFirestore(doc)).toList();
+  }
 }
