@@ -2,18 +2,19 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
-import '../models/Participants.dart';
 import '../models/Tournament.dart';
 import '../widgets/ScoreManagerDialog.dart';
 
 class InsertOtherScoresScreen extends StatefulWidget {
   final Tournament? tournament;
+  final Object? manualScoreEntry;
 
-  const InsertOtherScoresScreen({super.key, this.tournament});
+  const InsertOtherScoresScreen(
+      {super.key, this.tournament, this.manualScoreEntry});
 
   @override
-  _InsertOtherScoresScreenState createState() => _InsertOtherScoresScreenState();
+  _InsertOtherScoresScreenState createState() =>
+      _InsertOtherScoresScreenState();
 }
 
 class _InsertOtherScoresScreenState extends State<InsertOtherScoresScreen> {
@@ -21,6 +22,7 @@ class _InsertOtherScoresScreenState extends State<InsertOtherScoresScreen> {
   String? _selectedType;
   String? _selectedParticipant;
   String? _selectedParticipantIndex;
+  bool updateData = false;
   TextEditingController _reasonController = TextEditingController();
   TextEditingController _valueController = TextEditingController();
   TextEditingController _dateTimeController = TextEditingController();
@@ -28,10 +30,45 @@ class _InsertOtherScoresScreenState extends State<InsertOtherScoresScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedType = getDropdownItems().first; // Set the first dropdown item as selected
-    _dateTimeController.text = DateFormat('yyyy-MM-dd – kk:mm').format(DateTime.now());
+    _selectedType =
+        getDropdownItems().first; // Set the first dropdown item as selected
+    _dateTimeController.text =
+        DateFormat('yyyy-MM-dd – kk:mm').format(DateTime.now());
     if (widget.tournament?.participants.isNotEmpty == true) {
       _selectedParticipantIndex = widget.tournament?.participants.first.id;
+    }
+
+    if (widget.manualScoreEntry != null) {
+      _loadManualScoreEntry();
+      updateData = true;
+    }
+  }
+
+  void _loadManualScoreEntry() async {
+    FirebaseFirestore firestore = FirebaseFirestore.instance;
+    var tournamentId = widget.tournament?.id;
+
+    var snapshot = await firestore
+        .collection('manualScoreEntries')
+        .doc(tournamentId)
+        .get();
+    var data = snapshot.data();
+
+    if (data != null && data.containsKey(widget.manualScoreEntry)) {
+      var entryData = data[widget.manualScoreEntry] as Map<String, dynamic>;
+      setState(() {
+        _selectedType = entryData['typeToAdd'];
+        _valueController.text = entryData['value'];
+        _reasonController.text = entryData['reason'];
+        _dateTimeController.text = entryData['dateTime'];
+
+        int? participantIndex = entryData['participantIndex'];
+        if (participantIndex != null &&
+            widget.tournament!.participants.length > participantIndex) {
+          _selectedParticipant =
+              widget.tournament!.participants[participantIndex].name;
+        }
+      });
     }
   }
 
@@ -43,13 +80,37 @@ class _InsertOtherScoresScreenState extends State<InsertOtherScoresScreen> {
     return items;
   }
 
+
+  Future<void> _deleteEntry(BuildContext context) async {
+    var tournamentId = widget.tournament?.id;
+    var manualScoreEntryKey = widget.manualScoreEntry;
+
+    if (tournamentId != null && manualScoreEntryKey != null) {
+      DocumentReference docRef = FirebaseFirestore.instance.collection('manualScoreEntries').doc(tournamentId);
+
+      await docRef.update({manualScoreEntryKey: FieldValue.delete()})
+          .then((_) {
+        showInfoDialog('Update Entry', 'Entry has been deleted', true, context);
+        Navigator.of(context).pop();
+      })
+          .catchError((error) {
+        showInfoDialog('Error', 'Failed to delete entry: $error', false, context);
+      });
+    } else {
+      showInfoDialog('Error', 'Tournament ID or Entry Key is null', false, context);
+    }
+  }
+
+
+
+
   void _addDataToFirestore() async {
     if (_valueController.text.isEmpty || _valueController.text.length == 0) {
       showInfoDialog('Error', 'Invalid Value selected', false, context);
       return;
     }
 
-    if (_reasonController.text.isEmpty || _reasonController.text.length > 5) {
+    if (_reasonController.text.isEmpty || _reasonController.text.length < 5) {
       showInfoDialog('Error', 'Reason cannot be empty', false, context);
       return;
     }
@@ -57,15 +118,16 @@ class _InsertOtherScoresScreenState extends State<InsertOtherScoresScreen> {
       FirebaseFirestore firestore = FirebaseFirestore.instance;
 
       // Find the index of the selected participant
-      int? selectedParticipantIndex = widget.tournament?.participants.indexWhere(
-            (p) => p.name == _selectedParticipant,
+      int? selectedParticipantIndex =
+          widget.tournament?.participants.indexWhere(
+        (p) => p.name == _selectedParticipant,
       );
 
       // Proceed only if a valid participant is selected
       if (selectedParticipantIndex != null && selectedParticipantIndex != -1) {
         Map<String, dynamic> data = {
           'typeToAdd': _selectedType,
-          'participantIndex': selectedParticipantIndex, // Store the participant index
+          'participantIndex': selectedParticipantIndex,
           'value': _valueController.text,
           'reason': _reasonController.text,
           'dateTime': _dateTimeController.text,
@@ -73,16 +135,19 @@ class _InsertOtherScoresScreenState extends State<InsertOtherScoresScreen> {
           'insertedDate': DateTime.now().toIso8601String(),
         };
 
-        await firestore
-            .collection('manualScoreEntries')
-            .doc(widget.tournament?.id)
-            .set({DateTime.now().toIso8601String(): data}, SetOptions(merge: true))
-            .then((_) {
-          showInfoDialog('Success', 'Data added successfully', false, context);
-        })
-            .catchError((error) {
-          showInfoDialog('Error', 'Failed to add data: $error', false, context);
-        });
+        DocumentReference docRef = firestore.collection('manualScoreEntries').doc(widget.tournament?.id);
+
+        if (widget.manualScoreEntry == null) {
+          // Add new entry
+          String safeKey = "${DateTime.now().millisecondsSinceEpoch}";
+          await docRef.set({safeKey: data}, SetOptions(merge: true))
+              .then((_) => showInfoDialog('Success', 'Data added successfully', true, context));
+        } else {
+          // Update existing entry
+          await docRef.update({widget.manualScoreEntry!: data})
+              .then((_) => showInfoDialog('Success', 'Data updated successfully', true, context))
+              .catchError((error) => showInfoDialog('Error', 'Failed to update data: $error', false, context));
+        }
       } else {
         // Handle the case when no valid participant is selected
         showInfoDialog('Error', 'Invalid participant selected', false, context);
@@ -93,11 +158,14 @@ class _InsertOtherScoresScreenState extends State<InsertOtherScoresScreen> {
   @override
   Widget build(BuildContext context) {
     List<String> dropdownItems = getDropdownItems();
-    List<String> participantNames = widget.tournament?.participants.map((p) => p.name).toList() ?? [];
+    List<String> participantNames =
+        widget.tournament?.participants.map((p) => p.name).toList() ?? [];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Insert Other Scores/Wins'),
+        title: updateData
+            ? Text('Update Other Scores/Wins')
+            : Text('Insert Other Scores/Wins'),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -114,7 +182,8 @@ class _InsertOtherScoresScreenState extends State<InsertOtherScoresScreen> {
                       _selectedType = newValue;
                     });
                   },
-                  items: dropdownItems.map<DropdownMenuItem<String>>((String value) {
+                  items: dropdownItems
+                      .map<DropdownMenuItem<String>>((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -133,7 +202,8 @@ class _InsertOtherScoresScreenState extends State<InsertOtherScoresScreen> {
                       _selectedParticipant = newValue;
                     });
                   },
-                  items: participantNames.map<DropdownMenuItem<String>>((String value) {
+                  items: participantNames
+                      .map<DropdownMenuItem<String>>((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -175,11 +245,26 @@ class _InsertOtherScoresScreenState extends State<InsertOtherScoresScreen> {
                   readOnly: true,
                 ),
                 SizedBox(height: 20),
-                Center(
-                  child: ElevatedButton(
-                    onPressed: _addDataToFirestore,
-                    child: Text('Add Data'),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Center(
+                      child: ElevatedButton(
+                        onPressed: _addDataToFirestore,
+                        child:
+                            updateData ? Text('Update Data') : Text('Add Data'),
+                      ),
+                    ),
+                    if (updateData) ...{
+                      SizedBox(width: 20,),
+                      Center(
+                        child: ElevatedButton(
+                          onPressed: () => _deleteEntry(context),
+                          child: const Text('Delete Entry'),
+                        ),
+                      ),
+                    }
+                  ],
                 ),
               ],
             ),
@@ -193,7 +278,8 @@ class _InsertOtherScoresScreenState extends State<InsertOtherScoresScreen> {
     DateTime initialDateTime;
     if (_dateTimeController.text.isNotEmpty) {
       // Parse the current value of the controller into a DateTime object
-      initialDateTime = DateFormat('yyyy-MM-dd – kk:mm').parse(_dateTimeController.text);
+      initialDateTime =
+          DateFormat('yyyy-MM-dd – kk:mm').parse(_dateTimeController.text);
     } else {
       // If the controller is empty, use the current date and time
       initialDateTime = DateTime.now();
@@ -226,7 +312,8 @@ class _InsertOtherScoresScreenState extends State<InsertOtherScoresScreen> {
         );
 
         // Update the controller with the selected date and time
-        _dateTimeController.text = DateFormat('yyyy-MM-dd – kk:mm').format(selectedDateTime);
+        _dateTimeController.text =
+            DateFormat('yyyy-MM-dd – kk:mm').format(selectedDateTime);
       }
     }
   }

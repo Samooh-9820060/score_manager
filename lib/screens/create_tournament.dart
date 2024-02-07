@@ -311,7 +311,7 @@ class TournamentCreationFormState extends State<TournamentCreationForm> {
                         );
                       }).toList(),
                     ),
-                    if (scoringMethod == 'points')
+                    if (scoringMethod == 'points') ...[
                       DropdownButton<String>(
                         value: pointCalculationFrequency,
                         onChanged: (String? newValue) {
@@ -336,40 +336,42 @@ class TournamentCreationFormState extends State<TournamentCreationForm> {
                           keyboardType: TextInputType.number,
                         );
                       }),
-                    const SizedBox(height: 20,),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Evenly space the buttons
-                      children: [
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: const Size(120, 40), // Minimum button size
+
+                      const SizedBox(height: 20,),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Evenly space the buttons
+                        children: [
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: const Size(120, 40), // Minimum button size
+                            ),
+                            child: const Text('Add'),
+                            onPressed: () {
+                              setState(() {
+                                if (numberOfPlayers < 10) {
+                                  numberOfPlayers++;
+                                  pointControllers.add(TextEditingController());
+                                }
+                              });
+                            },
                           ),
-                          child: const Text('Add'),
-                          onPressed: () {
-                            setState(() {
-                              if (numberOfPlayers < 10) {
-                                numberOfPlayers++;
-                                pointControllers.add(TextEditingController());
-                              }
-                            });
-                          },
-                        ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: const Size(120, 40), // Minimum button size
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: const Size(120, 40), // Minimum button size
+                            ),
+                            child: const Text('Remove'),
+                            onPressed: () {
+                              setState(() {
+                                if (numberOfPlayers > 1) {
+                                  numberOfPlayers--;
+                                  pointControllers.removeLast();
+                                }
+                              });
+                            },
                           ),
-                          child: const Text('Remove'),
-                          onPressed: () {
-                            setState(() {
-                              if (numberOfPlayers > 1) {
-                                numberOfPlayers--;
-                                pointControllers.removeLast();
-                              }
-                            });
-                          },
-                        ),
-                      ],
-                    )
+                        ],
+                      )
+                    ],
                   ],
                 ),
               );
