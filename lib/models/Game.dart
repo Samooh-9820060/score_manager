@@ -5,7 +5,7 @@ class Game {
   final String tournamentId;
   final DateTime dateTime;
   final Map<String, String> scores;
-  final String winnerName;
+  final int winnerIndex;
   final Timestamp? createdDate;
   final String createdBy;
   final Timestamp? lastModifiedDate;
@@ -16,7 +16,7 @@ class Game {
     required this.tournamentId,
     required this.dateTime,
     required this.scores,
-    required this.winnerName,
+    required this.winnerIndex,
     required this.createdDate,
     required this.createdBy,
     this.lastModifiedDate,
@@ -31,7 +31,7 @@ class Game {
       tournamentId: data['tournamentId'],
       dateTime: DateTime.parse(data['dateTime']),
       scores: Map<String, String>.from(data['scores']),
-      winnerName: data['winnerName'],
+      winnerIndex: data['winnerIndex'],
       createdDate: data['createdDate'],
       createdBy: data['createdBy'],
       lastModifiedDate: data['lastModifiedDate'],
@@ -45,7 +45,7 @@ class Game {
       'tournamentId': tournamentId,
       'dateTime': dateTime.toIso8601String(),
       'scores': scores,
-      'winnerName': winnerName,
+      'winnerIndex': winnerIndex,
       'createdDate': createdDate,
       'createdBy': createdBy,
       'lastModifiedDate': lastModifiedDate,

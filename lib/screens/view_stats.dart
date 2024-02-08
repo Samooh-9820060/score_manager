@@ -40,12 +40,30 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const CircularProgressIndicator();
                   }
-                  var data =
+                  var aggregatedData =
                       snapshot.data?.data() as Map<String, dynamic>? ?? {};
-                  var aggregatedData = _aggregateData(data);
-                  var totalWins =
-                      _aggregateWins(data, widget.tournament.participants);
-                  return _buildDataTable(aggregatedData, totalWins);
+
+                  return FutureBuilder<DocumentSnapshot>(
+                    future: FirebaseFirestore.instance
+                        .collection('manualScoreEntries')
+                        .doc(widget.tournament.id)
+                        .get(),
+                    builder: (context, manualScoresSnapshot) {
+                      if (manualScoresSnapshot.hasError) {
+                        return Text('Error: ${manualScoresSnapshot.error}');
+                      }
+                      if (manualScoresSnapshot.connectionState == ConnectionState.waiting) {
+                        return const CircularProgressIndicator();
+                      }
+                      var manualScoresData =
+                          manualScoresSnapshot.data?.data() as Map<String, dynamic>? ?? {};
+
+                      var totalWins =
+                      _aggregateWins(aggregatedData, widget.tournament.participants);
+
+                      return _buildDataTable(_aggregateData(aggregatedData), totalWins, manualScoresData);
+                    },
+                  );
                 },
               ),
             ],
@@ -67,14 +85,14 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
     data.forEach((date, dailyData) {
       if (dailyData is Map<String, dynamic> && dailyData.containsKey('wins')) {
         Map<dynamic, dynamic> wins = dailyData['wins'];
-        wins.forEach((participantIndex, winCount) {
-          String participantName =
-              participants[int.parse(participantIndex)].name;
-          // Explicitly cast winCount to int
-          int winCountInt = (winCount as num).toInt();
-          totalWins[participantName] =
-              (totalWins[participantName] ?? 0) + winCountInt;
-        });
+        if (wins.isNotEmpty) { // Check if there are valid wins
+          wins.forEach((participantIndex, winCount) {
+            String participantName = participants[int.parse(participantIndex)].name;
+            // Explicitly cast winCount to int
+            int winCountInt = (winCount as num).toInt();
+            totalWins[participantName] = (totalWins[participantName] ?? 0) + winCountInt;
+          });
+        }
       }
     });
 
@@ -89,23 +107,31 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
           dailyData.containsKey('scores')) {
         var scores = dailyData['scores'] as Map<String, dynamic>;
 
-        // Sorting the scores
-        var sortedScores = scores.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
+        int totalScore = scores.values.fold(0, (sum, score) => sum + (int.tryParse(score.toString()) ?? 0));
 
-        sortedScores.asMap().forEach((rank, entry) {
-          var participantName =
-              widget.tournament.participants[int.parse(entry.key)].name;
+        if (totalScore > 0) {
+          // Sorting the scores
+          var sortedScores = scores.entries.toList()
+            ..sort((a, b) => b.value.compareTo(a.value));
 
-          // Ensure rank is within the bounds of pointValues list
-          if (rank < widget.tournament.pointValues.length) {
-            var points = widget.tournament.pointValues[rank];
-            if (!dailyPoints.containsKey(participantName)) {
-              dailyPoints[participantName] = [];
-            }
-            dailyPoints[participantName]!.add(points);
-          }
-        });
+          sortedScores.asMap().forEach((rank, entry) {
+            var participantName =
+                widget.tournament.participants[int.parse(entry.key)].name;
+
+            // Ensure rank is within the bounds of pointValues list
+            if (rank < widget.tournament.pointValues.length) {
+              var points = widget.tournament.pointValues[rank];
+              if (!dailyPoints.containsKey(participantName)) {
+                dailyPoints[participantName] = [];
+              }
+              dailyPoints[participantName]!.add(points);
+            } else {
+              if (!dailyPoints.containsKey(participantName)) {
+                dailyPoints[participantName] = [];
+              }
+              dailyPoints[participantName]!.add(0);            }
+          });
+        }
       }
     });
     return dailyPoints;
@@ -218,11 +244,47 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
   }
 
   Widget _buildDataTable(
-      Map<String, List<int>> aggregatedData, Map<String, int> winsData) {
+      Map<String, List<int>> aggregatedData, Map<String, int> winsData, Map<String, dynamic> manualScoresData) {
+
+    // Map participant index to name
+    Map<int, String> indexToNameMap = {};
+    for (var i = 0; i < widget.tournament.participants.length; i++) {
+      indexToNameMap[i] = widget.tournament.participants[i].name;
+    }
+
+    // Function to calculate total points including manual adjustments
+    int calculateTotalPoints(String participantName, Map<String, List<int>> data, Map<String, dynamic> manualScores) {
+      int points = _calculateTotalPoints(participantName, data);
+      manualScores.forEach((key, value) {
+        if (indexToNameMap[value['participantIndex']] == participantName && value['typeToAdd'] == 'Points') {
+          points += int.parse(value['value']);
+        }
+      });
+      return points;
+    }
+
+    // Function to calculate total wins including manual adjustments
+    int calculateTotalWins(String participantName, Map<String, int> data, Map<String, dynamic> manualScores) {
+      int wins = data[participantName] ?? 0;
+      manualScores.forEach((key, value) {
+        if (indexToNameMap[value['participantIndex']] == participantName && value['typeToAdd'] == 'Wins') {
+          wins += int.parse(value['value']);
+        }
+      });
+      return wins;
+    }
+
     List<DataRow> rows = aggregatedData.entries.map<DataRow>((entry) {
       var participantName = entry.key;
-      var points = _calculateTotalPoints(participantName, aggregatedData);
-      var wins = winsData[participantName] ?? 0;
+      var points = calculateTotalPoints(participantName, aggregatedData, manualScoresData);
+      var wins = calculateTotalWins(participantName, winsData, manualScoresData);
+
+      // Add manual wins
+      manualScoresData.forEach((key, value) {
+        if (value['participantIndex'] == participantName && value['typeToAdd'] == 'Wins') {
+          wins += int.parse(value['value']);
+        }
+      });
 
       return DataRow(
         cells: [

@@ -96,7 +96,7 @@ class TournamentService {
       List<Game> games = await GameService().fetchAllGamesForTournament(tournament.id);
 
       // Organize games by date and calculate scores and wins
-      Map<String, Map<String, dynamic>>? organizedData = {};
+      Map<String, Map<String, dynamic>> organizedData = {};
       for (var game in games) {
         String dateKey = DateFormat('yyyy-MM-dd').format(game.dateTime);
         if (!organizedData.containsKey(dateKey)) {
@@ -108,12 +108,9 @@ class TournamentService {
 
         // Update scores and wins for each participant in the game
         for (var entry in game.scores.entries) {
-          String participantId = entry.key;
+          // Here, entry.key is the participant index
+          int participantIndex = int.parse(entry.key);
           int score = int.parse(entry.value);
-
-          // Get the index of the participant
-          int? participantIndex = participantIndexes[participantId];
-          if (participantIndex == null) continue; // Skip if participant not found
 
           // Update scores
           if (!organizedData[dateKey]?['scores'].containsKey(participantIndex)) {
@@ -122,7 +119,7 @@ class TournamentService {
           organizedData[dateKey]?['scores'][participantIndex] += score;
 
           // Update wins
-          if (game.winnerName == participantId) {
+          if (game.winnerIndex == participantIndex) { // Using winnerIndex directly
             if (!organizedData[dateKey]?['wins'].containsKey(participantIndex)) {
               organizedData[dateKey]?['wins'][participantIndex] = 0;
             }
@@ -148,5 +145,12 @@ class TournamentService {
     } catch (e) {
       showInfoDialog('Sync Data', 'Error recalculating scores: $e', false, context);
     }
+  }
+
+  String? getParticipantNameByIndex(int index, Tournament tournament) {
+    if (index >= 0 && index < tournament.participants.length) {
+      return tournament.participants[index].name;
+    }
+    return null;
   }
 }

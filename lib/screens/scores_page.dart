@@ -69,17 +69,20 @@ class _ScoresPageState extends State<ScoresPage> {
   Map<String, dynamic> participantScores = {};
 
   void calculateScoresAndWins() {
-    Map<String, int> scores = {};
-    Map<String, int> wins = {};
+    Map<int, int> scores = {};
+    Map<int, int> wins = {};
 
     for (var game in games) {
-      game.scores.forEach((participantId, scoreString) {
+      game.scores.forEach((participantIndexStr, scoreString) {
+        int participantIndex = int.tryParse(participantIndexStr) ?? -1;
         int score = int.tryParse(scoreString) ?? 0; // Convert score to int
-        scores[participantId] = (scores[participantId] ?? 0) + score;
 
-        // Assuming game.winnerName holds the ID or name of the winning participant
-        if (game.winnerName == participantId) {
-          wins[participantId] = (wins[participantId] ?? 0) + 1;
+        if (participantIndex != -1) {
+          scores[participantIndex] = (scores[participantIndex] ?? 0) + score;
+
+          if (game.winnerIndex == participantIndex) {
+            wins[participantIndex] = (wins[participantIndex] ?? 0) + 1;
+          }
         }
       });
     }
@@ -89,6 +92,7 @@ class _ScoresPageState extends State<ScoresPage> {
       'wins': wins,
     };
   }
+
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? pickedDate = await showDatePicker(
@@ -240,9 +244,19 @@ class _ScoresPageState extends State<ScoresPage> {
                             return const CircularProgressIndicator();
                           default:
                             games = snapshot.data ?? [];
-                            calculateScoresAndWins();
-                            return buildGamesList(
-                                games); // Implement this method
+                            return FutureBuilder<Tournament?>(
+                              future: TournamentService().fetchTournamentById(selectedTournamentId!),
+                              builder: (context, tournamentSnapshot) {
+                                if (tournamentSnapshot.connectionState == ConnectionState.waiting) {
+                                  return const CircularProgressIndicator();
+                                }
+                                if (tournamentSnapshot.hasError || tournamentSnapshot.data == null) {
+                                  return Text('Error: Failed to fetch tournament data');
+                                }
+                                calculateScoresAndWins();
+                                return buildGamesList(games, tournamentSnapshot.data!);
+                              },
+                            );
                         }
                       },
                     ),
@@ -276,16 +290,22 @@ class _ScoresPageState extends State<ScoresPage> {
     );
   }
 
-  Widget buildGamesList(List<Game> games) {
+  // Updated buildGamesList method
+  Widget buildGamesList(List<Game> games, Tournament tournament) {
+    Map<int, String> participantIndexToName = {};
+    for (int i = 0; i < tournament.participants.length; i++) {
+      participantIndexToName[i] = tournament.participants[i].name;
+    }
     return ListView.builder(
       shrinkWrap: true,
       physics: NeverScrollableScrollPhysics(),
-      // keeps it from scrolling independently
       itemCount: games.length,
       itemBuilder: (context, index) {
         Game game = games[index];
         return GameCard(
-            game: game); // Implement GameCard according to your game model
+          game: game,
+          participantIndexToName: participantIndexToName,
+        );
       },
     );
   }
@@ -298,7 +318,7 @@ class _ScoresPageState extends State<ScoresPage> {
       return Text('Invalid data format');
     }
 
-    String formattedDateKey = DateFormat('yyyy-M-d').format(selectedDate);
+    String formattedDateKey = DateFormat('yyyy-MM-dd').format(selectedDate);
     var dailyData = snapshotData[formattedDateKey] as Map?;
 
     if (dailyData == null) {
@@ -345,20 +365,23 @@ void onDeleteGame(String gameId) async {
 
 class GameCard extends StatelessWidget {
   final Game game;
+  final Map<int, String> participantIndexToName; // Map of index to name
 
-  GameCard({required this.game});
+  GameCard({required this.game, required this.participantIndexToName});
 
   @override
   Widget build(BuildContext context) {
     List<Widget> scoreWidgets = game.scores.entries.map((entry) {
-      bool isWinner = entry.key == game.winnerName;
+      int participantIndex = int.tryParse(entry.key) ?? -1;
+      bool isWinner = game.winnerIndex == participantIndex;
       Color rowColor = isWinner ? Colors.green : Colors.black;
+      String participantName = participantIndexToName[participantIndex] ?? 'Unknown';
 
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            entry.key, // Participant's name or ID
+            participantName, // Participant's name or ID
             style: TextStyle(fontSize: 14, color: rowColor), // Apply the color
           ),
           Text(

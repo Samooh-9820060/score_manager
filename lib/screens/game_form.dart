@@ -87,7 +87,7 @@ class _AddGameFormState extends State<AddGameForm> {
               selectedTournament = fetchedTournament;
               // Initialize score controllers with existing game scores
               _initializeScoreControllersWithGameScores(fetchedTournament, widget.game!.scores);
-              _selectedWinner = widget.game!.winnerName;
+              _selectedWinner = TournamentService().getParticipantNameByIndex(widget.game!.winnerIndex, fetchedTournament);
             });
           }
         });
@@ -113,10 +113,11 @@ class _AddGameFormState extends State<AddGameForm> {
 
   void _initializeScoreControllersWithGameScores(Tournament tournament, Map<String, String> gameScores) {
     _scoreControllers.clear();
-    _selectedWinner = null;
+    //_selectedWinnerIndex = null;
 
-    for (var participant in tournament.participants) {
-      var controller = TextEditingController(text: gameScores[participant.name] ?? '');
+    for (int index = 0; index < tournament.participants.length; index++) {
+      var participant = tournament.participants[index];
+      var controller = TextEditingController(text: gameScores[index.toString()] ?? '');
       _scoreControllers[participant.name] = controller;
 
       // Adding a listener to each controller
@@ -134,24 +135,23 @@ class _AddGameFormState extends State<AddGameForm> {
       try {
         Map<String, String> scores = {};
         String? winnerName;
+        int? winnerIndex;
 
-        for (var participant in selectedTournament.participants) {
+        for (int i = 0; i < selectedTournament.participants.length; i++) {
+          var participant = selectedTournament.participants[i];
           String score = _scoreControllers[participant.name]!.text;
-          scores[participant.name] = score;
+          scores[i.toString()] = score; // Use index as key
 
           if (_selectedWinner == participant.name) {
             winnerName = participant.name;
+            winnerIndex = i; // Save the index of the winner
           }
         }
 
-        if (winnerName == null) {
+        if (winnerIndex == null) {
           print('No winner selected');
           return;
         }
-
-        // Debug print statements to check the formats
-        print("Date input: ${_dateTimeController.text}");
-        print("Time input: ${_timeController.text}");
 
         // Correct the parsing format
         String formattedDateTime = '${_dateTimeController.text} ${_timeController.text}';
@@ -165,7 +165,7 @@ class _AddGameFormState extends State<AddGameForm> {
           tournamentId: _selectedTournamentId!,
           dateTime: gameDateTime,
           scores: scores,
-          winnerName: winnerName,
+          winnerIndex: winnerIndex,
           // Preserve the original creation details
           createdDate: widget.game!.createdDate,
           createdBy: widget.game!.createdBy,
@@ -192,17 +192,20 @@ class _AddGameFormState extends State<AddGameForm> {
         String gameId = _firestore.collection('games').doc().id;
         Map<String, String> scores = {};
         String? winnerName;
+        int? winnerIndex;
 
-        for (var participant in selectedTournament.participants) {
+        for (int i = 0; i < selectedTournament.participants.length; i++) {
+          var participant = selectedTournament.participants[i];
           String score = _scoreControllers[participant.name]!.text;
-          scores[participant.name] = score;
+          scores[i.toString()] = score; // Use index as key
 
           if (_selectedWinner == participant.name) {
             winnerName = participant.name;
+            winnerIndex = i; // Save the index of the winner
           }
         }
 
-        if (winnerName == null) {
+        if (winnerIndex == null) {
           print('No winner selected');
           return;
         }
@@ -220,7 +223,7 @@ class _AddGameFormState extends State<AddGameForm> {
           tournamentId: _selectedTournamentId!,
           dateTime: gameDateTime,
           scores: scores,
-          winnerName: winnerName,
+          winnerIndex: winnerIndex,
           createdDate: Timestamp.now(),
           createdBy: FirebaseAuth.instance.currentUser!.uid,
           lastModifiedBy: FirebaseAuth.instance.currentUser!.uid,
