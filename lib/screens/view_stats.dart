@@ -7,6 +7,14 @@ import '../models/Participants.dart';
 import '../models/Tournament.dart';
 import 'add_manual_score.dart';
 
+class ParticipantScore {
+  final String name;
+  final int points;
+  final int wins;
+
+  ParticipantScore({required this.name, required this.points, required this.wins});
+}
+
 class ViewStatsScreen extends StatefulWidget {
   final Tournament tournament;
 
@@ -38,7 +46,7 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
                     return Text('Error: ${snapshot.error}');
                   }
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const CircularProgressIndicator();
+                    return Center(child: const CircularProgressIndicator());
                   }
                   var aggregatedData =
                       snapshot.data?.data() as Map<String, dynamic>? ?? {};
@@ -53,7 +61,7 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
                         return Text('Error: ${manualScoresSnapshot.error}');
                       }
                       if (manualScoresSnapshot.connectionState == ConnectionState.waiting) {
-                        return const CircularProgressIndicator();
+                        return Center(child: const CircularProgressIndicator());
                       }
                       var manualScoresData =
                           manualScoresSnapshot.data?.data() as Map<String, dynamic>? ?? {};
@@ -274,25 +282,24 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
       return wins;
     }
 
-    List<DataRow> rows = aggregatedData.entries.map<DataRow>((entry) {
+    // Create a list of ParticipantScore objects
+    var participantScores = aggregatedData.entries.map((entry) {
       var participantName = entry.key;
-      var points = calculateTotalPoints(participantName, aggregatedData, manualScoresData);
-      var wins = calculateTotalWins(participantName, winsData, manualScoresData);
+      int points = calculateTotalPoints(participantName, aggregatedData, manualScoresData);
+      int wins = calculateTotalWins(participantName, winsData, manualScoresData);
+      return ParticipantScore(name: participantName, points: points, wins: wins);
+    }).toList();
 
-      // Add manual wins
-      manualScoresData.forEach((key, value) {
-        if (value['participantIndex'] == participantName && value['typeToAdd'] == 'Wins') {
-          wins += int.parse(value['value']);
-        }
-      });
+    // Sort the list based on points in descending order
+    participantScores.sort((a, b) => b.points.compareTo(a.points));
 
+    // Build DataRow objects
+    List<DataRow> rows = participantScores.map<DataRow>((participant) {
       return DataRow(
         cells: [
-          DataCell(Text(participantName)),
-          DataCell(Center(
-              child: Text(points.toString(), textAlign: TextAlign.center))),
-          DataCell(Center(
-              child: Text(wins.toString(), textAlign: TextAlign.center))),
+          DataCell(Text(participant.name)),
+          DataCell(Center(child: Text(participant.points.toString(), textAlign: TextAlign.center))),
+          DataCell(Center(child: Text(participant.wins.toString(), textAlign: TextAlign.center))),
         ],
       );
     }).toList();
