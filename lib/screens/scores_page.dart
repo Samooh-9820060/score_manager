@@ -329,18 +329,23 @@ class _ScoresPageState extends State<ScoresPage> {
     Map scores = dailyData['scores'] as Map<dynamic, dynamic>;
     Map wins = dailyData['wins'] as Map<dynamic, dynamic>;
 
-    scores.forEach((index, score) {
-      int winCount = wins[index] ?? 0;
+    // Sort scores by value in descending order
+    var sortedScores = scores.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    // Create rows using sorted scores
+    for (var entry in sortedScores) {
+      int winCount = wins[entry.key] ?? 0;
       String participantName =
-          tournament.participants[int.parse(index.toString())].name;
+          tournament.participants[int.parse(entry.key.toString())].name;
       rows.add(DataRow(
         cells: [
           DataCell(Text(participantName)),
-          DataCell(Center(child: Text(score.toString(), textAlign: TextAlign.center,))),
+          DataCell(Center(child: Text(entry.value.toString(), textAlign: TextAlign.center))),
           DataCell(Center(child: Text(winCount.toString(), textAlign: TextAlign.center))),
         ],
       ));
-    });
+    }
 
     return DataTable(
       columnSpacing: 40,
