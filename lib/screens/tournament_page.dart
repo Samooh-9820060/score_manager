@@ -1,7 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:rxdart/rxdart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:score_manager/screens/add_manual_score.dart';
 import 'package:score_manager/screens/game_form.dart';
 import 'package:score_manager/screens/view_stats.dart';
@@ -20,6 +19,7 @@ class TournamentListPage extends StatefulWidget {
 class _TournamentListPageState extends State<TournamentListPage> {
   late final Stream<List<Tournament>> _tournamentStream;
   String? currentUserUid;
+  String? defaultTournamentId;
 
   @override
   void initState() {
@@ -27,7 +27,15 @@ class _TournamentListPageState extends State<TournamentListPage> {
     currentUserUid = FirebaseAuth.instance.currentUser?.uid;
     if (currentUserUid != null) {
       _tournamentStream = TournamentService().getEditableTournamentsStream(currentUserUid!);
+      getDefaultTournamentId();
     }
+  }
+
+  getDefaultTournamentId() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      defaultTournamentId = prefs.getString('defaultTournamentId');
+    });
   }
 
   @override
@@ -101,6 +109,13 @@ class _TournamentListPageState extends State<TournamentListPage> {
                     showInfoDialog('Delete Tournament', 'Tournament has been deleted with all associated games', false, context);
                   }
                 },
+                onSetDefault: () async {
+                  SharedPreferences prefs = await SharedPreferences.getInstance();
+                  await prefs.setString('defaultTournamentId', tournament.id);
+                  getDefaultTournamentId();
+                  showInfoDialog('Set Default Tournament', 'Tournament has been set as default and will be always seleceted when inserting games', false, context);
+                },
+                isDefault: tournament.id == defaultTournamentId,
               );
             }).toList(),
           );

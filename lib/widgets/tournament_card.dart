@@ -12,6 +12,8 @@ class TournamentCard extends StatelessWidget {
   final VoidCallback insertOtherScore;
   final VoidCallback onViewStats;
   final VoidCallback onDeleteTournament;
+  final VoidCallback onSetDefault;
+  final bool isDefault;
 
   TournamentCard({
     required this.tournament,
@@ -20,6 +22,8 @@ class TournamentCard extends StatelessWidget {
     required this.insertOtherScore,
     required this.onViewStats,
     required this.onDeleteTournament,
+    required this.onSetDefault,
+    this.isDefault = false,
   });
 
   String formatDate(DateTime? date) {
@@ -37,69 +41,12 @@ class TournamentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool hasWinner = tournament.winner != null && tournament.winner! < tournament.participants.length;
+    bool hasWinner = tournament.winner != null &&
+        tournament.winner! < tournament.participants.length;
 
     return GestureDetector(
       onTap: () async {
-        final result = await showDialog<String>(
-          context: context,
-          builder: (BuildContext context) {
-            return SimpleDialog(
-              title: const Text('Choose an action'),
-              children: <Widget>[
-                SimpleDialogOption(
-                  onPressed: () => {
-                    Navigator.of(context).pop(),
-                    onEdit(),
-                  },
-                  child: const Text('Edit Tournament'),
-                ),
-                SimpleDialogOption(
-                  onPressed: () => {
-                    Navigator.of(context).pop(),
-                    onInsertGame(),
-                  },
-                  child: const Text('Insert Game'),
-                ),
-                SimpleDialogOption(
-                  onPressed: () => {
-                    Navigator.of(context).pop(),
-                    insertOtherScore(),
-                  },
-                  child: const Text('Insert Other Scores / Wins'),
-                ),
-                SimpleDialogOption(
-                  onPressed: () => {
-                    Navigator.of(context).pop(),
-                    onViewStats(),
-                  },
-                  child: const Text('View Stats'),
-                ),
-                SimpleDialogOption(
-                  onPressed: () => {
-                    Navigator.of(context).pop(),
-                    onDeleteTournament(),
-                  },
-                  child: const Text('Delete Tournament'),
-                ),
-              ],
-            );
-          },
-        );
-
-        if (result != null) {
-          switch (result) {
-            case 'edit':
-              onEdit();
-              break;
-            case 'insert_game':
-              onInsertGame();
-              break;
-            case 'view_stats':
-              onViewStats();
-              break;
-          }
-        }
+        onViewStats();
       },
       child: Card(
         margin: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
@@ -108,17 +55,83 @@ class TournamentCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(15.0),
         ),
         child: Padding(
-          padding: EdgeInsets.all(12),
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(
-                tournament.name,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).primaryColor,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Text(
+                          tournament.name,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).primaryColor,
+                          ),
+                        ),
+                        if (isDefault)
+                          SizedBox(width: 8),
+                        if (isDefault)
+                          Icon(Icons.star, color: Colors.amber),
+                      ],
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    onSelected: (String result) {
+                      switch (result) {
+                        case 'edit':
+                          onEdit();
+                          break;
+                        case 'insert_game':
+                          onInsertGame();
+                          break;
+                        case 'insert_other_score':
+                          insertOtherScore();
+                          break;
+                        case 'view_stats':
+                          onViewStats();
+                          break;
+                        case 'delete_tournament':
+                          onDeleteTournament();
+                          break;
+                        case 'set_default':
+                          onSetDefault();
+                          break;
+                      }
+                    },
+                    itemBuilder: (BuildContext context) =>
+                        <PopupMenuEntry<String>>[
+                      const PopupMenuItem<String>(
+                        value: 'edit',
+                        child: Text('Edit Tournament'),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'insert_game',
+                        child: Text('Insert Game'),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'insert_other_score',
+                        child: Text('Insert Other Scores / Wins'),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'view_stats',
+                        child: Text('View Stats'),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'delete_tournament',
+                        child: Text('Delete Tournament'),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'set_default',
+                        child: Text('Set as Default'),
+                      ),
+                    ],
+                  ),
+                ],
               ),
               SizedBox(height: 6),
               Text(
@@ -150,7 +163,8 @@ class TournamentCard extends StatelessWidget {
                   padding: EdgeInsets.only(top: 10),
                   child: Row(
                     children: [
-                      Icon(Icons.emoji_events, color: Colors.amber), // Trophy icon
+                      Icon(Icons.emoji_events, color: Colors.amber),
+                      // Trophy icon
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(

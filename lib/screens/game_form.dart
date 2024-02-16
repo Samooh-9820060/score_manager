@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:score_manager/widgets/ScoreManagerDialog.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/Game.dart';
 import '../models/Tournament.dart';
@@ -274,6 +275,9 @@ class _AddGameFormState extends State<AddGameForm> {
     String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
     var stream = TournamentService().getEditableTournamentsStream(userId);
 
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? defaultTournamentId = prefs.getString('defaultTournamentId');
+
     stream.listen((tournaments) {
       DateTime now = DateTime.now();
       List<Tournament> activeTournaments = tournaments.where((tournament) {
@@ -287,7 +291,15 @@ class _AddGameFormState extends State<AddGameForm> {
           _selectedTournamentId = widget.tournament!.id;
           selectedTournament = widget.tournament!;
           _initializeScoreControllers(widget.tournament!);
-        } else if (activeTournaments.length == 1) {
+        }
+        else if (defaultTournamentId != null) {
+          _selectedTournamentId = defaultTournamentId;
+          selectedTournament = tournaments.where((tournament) {
+            return (tournament.id == defaultTournamentId);
+          }).first;
+          _initializeScoreControllers(selectedTournament);
+        }
+        else if (activeTournaments.length == 1) {
           // If there is only one active tournament, automatically select it
           _selectedTournamentId = activeTournaments.first.id;
           selectedTournament = activeTournaments.first;

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/Game.dart';
 import '../models/Tournament.dart';
 import '../services/GameService.dart';
@@ -24,8 +25,8 @@ class _ScoresPageState extends State<ScoresPage> {
   void initState() {
     super.initState();
     _fetchCurrentUserName();
-    //_fetchGamesForSelectedFilters();
     _fetchTournaments();
+    getDefaultTournamentId();
   }
 
   void _fetchCurrentUserName() {
@@ -33,6 +34,18 @@ class _ScoresPageState extends State<ScoresPage> {
     setState(() {
       currentUserName = user?.displayName ?? 'User';
     });
+  }
+
+  void getDefaultTournamentId() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      setState(() {
+        selectedTournamentId = prefs.getString('defaultTournamentId');
+      });
+      _fetchGamesForSelectedFilters();
+    } on Exception catch (_, e) {
+
+    }
   }
 
   void _fetchTournaments() {
