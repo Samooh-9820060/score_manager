@@ -103,33 +103,60 @@ class TournamentCard extends StatelessWidget {
                           break;
                       }
                     },
-                    itemBuilder: (BuildContext context) =>
-                        <PopupMenuEntry<String>>[
-                      const PopupMenuItem<String>(
-                        value: 'edit',
-                        child: Text('Edit Tournament'),
-                      ),
-                      const PopupMenuItem<String>(
-                        value: 'insert_game',
-                        child: Text('Insert Game'),
-                      ),
-                      const PopupMenuItem<String>(
-                        value: 'insert_other_score',
-                        child: Text('Insert Other Scores / Wins'),
-                      ),
-                      const PopupMenuItem<String>(
-                        value: 'view_stats',
-                        child: Text('View Stats'),
-                      ),
-                      const PopupMenuItem<String>(
-                        value: 'delete_tournament',
-                        child: Text('Delete Tournament'),
-                      ),
-                      const PopupMenuItem<String>(
-                        value: 'set_default',
-                        child: Text('Set as Default'),
-                      ),
-                    ],
+                    itemBuilder: (BuildContext context) {
+                      List<PopupMenuEntry<String>> menuItems = [
+                        PopupMenuItem<String>(
+                          value: 'edit',
+                          child: ListTile(
+                            leading: Icon(Icons.edit), // Edit icon
+                            title: Text('Edit Tournament'),
+                          ),
+                        ),
+                        PopupMenuItem<String>(
+                          value: 'insert_game',
+                          child: ListTile(
+                            leading: Icon(Icons.add_circle_outline), // Insert/Add icon
+                            title: Text('Insert Game'),
+                          ),
+                        ),
+                        PopupMenuItem<String>(
+                          value: 'insert_other_score',
+                          child: ListTile(
+                            leading: Icon(Icons.list), // List or Scoreboard icon
+                            title: Text('Insert Other Scores / Wins'),
+                          ),
+                        ),
+                        PopupMenuItem<String>(
+                          value: 'view_stats',
+                          child: ListTile(
+                            leading: Icon(Icons.bar_chart), // Stats/Analytics icon
+                            title: Text('View Stats'),
+                          ),
+                        ),
+                        PopupMenuItem<String>(
+                          value: 'delete_tournament',
+                          child: ListTile(
+                            leading: Icon(Icons.delete), // Delete icon
+                            title: Text('Delete Tournament'),
+                          ),
+                        ),
+                      ];
+
+                      // Only add 'Set as Default' if not already the default tournament
+                      if (!isDefault) {
+                        menuItems.add(
+                          PopupMenuItem<String>(
+                            value: 'set_default',
+                            child: ListTile(
+                              leading: Icon(Icons.star_border), // Default/Star icon
+                              title: Text('Set as Default'),
+                            ),
+                          ),
+                        );
+                      }
+
+                      return menuItems;
+                    },
                   ),
                 ],
               ),

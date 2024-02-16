@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:score_manager/models/UserProfile.dart';
 import 'package:score_manager/services/TournamentService.dart';
 import 'package:score_manager/widgets/ScoreManagerDialog.dart';
 import '../models/Participants.dart';
@@ -11,8 +12,9 @@ class ParticipantScore {
   final String name;
   final int points;
   final int wins;
+  final int totalScore;
 
-  ParticipantScore({required this.name, required this.points, required this.wins});
+  ParticipantScore({required this.name, required this.points, required this.wins, required this.totalScore});
 }
 
 class ViewStatsScreen extends StatefulWidget {
@@ -69,7 +71,7 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
                       var totalWins =
                       _aggregateWins(aggregatedData, widget.tournament.participants);
 
-                      return _buildDataTable(_aggregateData(aggregatedData), totalWins, manualScoresData);
+                      return _buildDataTable(_aggregateData(aggregatedData), totalWins, manualScoresData, aggregatedData);
                     },
                   );
                 },
@@ -251,8 +253,21 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
     );
   }
 
+  Future<void> _confirmRecalculateScores(BuildContext context) async {
+    bool confirm = await showConfirmDialog(
+        'Recalculate Scores',
+        'This will recalculate the scores and reset it. Are you sure you want to continue?',
+        context
+    );
+
+    if (confirm) {
+      // Call the method to recalculate and refresh scores
+      TournamentService().recalculateAndRefreshScores(widget.tournament, context);
+    }
+  }
+
   Widget _buildDataTable(
-      Map<String, List<int>> aggregatedData, Map<String, int> winsData, Map<String, dynamic> manualScoresData) {
+      Map<String, List<int>> aggregatedData, Map<String, int> winsData, Map<String, dynamic> manualScoresData, Map<String, dynamic> totalData) {
 
     // Map participant index to name
     Map<int, String> indexToNameMap = {};
@@ -282,24 +297,51 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
       return wins;
     }
 
+    int calculateTotalScore(String participantName, Map<String, dynamic> fullData, Map<int, String> indexToNameMap) {
+      int totalScore = 0;
+
+      fullData.forEach((date, dataMap) {
+        Map<dynamic, dynamic> scores = dataMap['scores'];
+        scores.forEach((index, score) {
+          // Convert index to int before lookup if it's not already an int
+          int participantIndex = int.tryParse(index.toString()) ?? -1; // Handle potential parsing failure
+          String? participantNameAtIndex = indexToNameMap[participantIndex];
+
+          if (participantNameAtIndex == participantName) {
+            // Add the score to the total score
+            totalScore += score as int; // Ensure score is an integer
+          }
+        });
+      });
+      return totalScore;
+    }
+
     // Create a list of ParticipantScore objects
     var participantScores = aggregatedData.entries.map((entry) {
       var participantName = entry.key;
       int points = calculateTotalPoints(participantName, aggregatedData, manualScoresData);
       int wins = calculateTotalWins(participantName, winsData, manualScoresData);
-      return ParticipantScore(name: participantName, points: points, wins: wins);
+      int totalScore = calculateTotalScore(participantName, totalData, indexToNameMap);
+      return ParticipantScore(name: participantName, points: points, wins: wins, totalScore: totalScore);
     }).toList();
 
     // Sort the list based on points in descending order
     participantScores.sort((a, b) => b.points.compareTo(a.points));
 
-    // Build DataRow objects
     List<DataRow> rows = participantScores.map<DataRow>((participant) {
+      bool isCurrentUser = participant.name == UserProfileSingleton().username;
       return DataRow(
+        color: MaterialStateProperty.resolveWith<Color?>(
+              (Set<MaterialState> states) {
+            if (isCurrentUser) return Colors.lightBlue[100]; // Mint green
+            return null;
+          },
+        ),
         cells: [
           DataCell(Text(participant.name)),
           DataCell(Center(child: Text(participant.points.toString(), textAlign: TextAlign.center))),
           DataCell(Center(child: Text(participant.wins.toString(), textAlign: TextAlign.center))),
+          DataCell(Center(child: Text(participant.totalScore.toString(), textAlign: TextAlign.center))),
         ],
       );
     }).toList();
@@ -308,6 +350,7 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
       const DataColumn(label: Text('Participant')),
       const DataColumn(label: Text('Points')),
       const DataColumn(label: Text('Total Wins')),
+      const DataColumn(label: Text('Total Score')),
     ];
 
     return Column(
@@ -326,25 +369,40 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
                   color: Colors.blueGrey[700],
                 ),
               ),
-              IconButton(
-                icon: Icon(Icons.menu_book_outlined),
-                onPressed: () async {
-                  //show manually added points
-                  _showManualPoints(context);
-                },
-              ),
-              Spacer(),
-              IconButton(
-                icon: Icon(Icons.refresh),
-                onPressed: () async {
-                  if (await showConfirmDialog(
-                      'Recalculate Scores',
-                      'This will recalculate the scores and reset it. Are you sure u want to continue?',
-                      context)) {
-                    TournamentService().recalculateAndRefreshScores(
-                        widget.tournament, context);
+              PopupMenuButton<String>(
+                onSelected: (String result) {
+                  switch (result) {
+                    case 'manual_points':
+                      _showManualPoints(context);
+                      break;
+                    case 'recalculate_scores':
+                      _confirmRecalculateScores(context);
+                      break;
                   }
                 },
+                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                  PopupMenuItem<String>(
+                    value: 'manual_points',
+                    child: Row(
+                      children: <Widget>[
+                        Icon(Icons.menu_book_outlined),
+                        SizedBox(width: 8),
+                        Text('Show Manual Points'),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem<String>(
+                    value: 'recalculate_scores',
+                    child: Row(
+                      children: <Widget>[
+                        Icon(Icons.refresh),
+                        SizedBox(width: 8),
+                        Text('Recalculate Scores'),
+                      ],
+                    ),
+                  ),
+                ],
+                icon: Icon(Icons.more_vert),
               ),
             ],
           ),
@@ -354,22 +412,25 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20.0),
-              border: Border.all(color: Colors.blueGrey[300]!, width: 0.5),
+              border: Border.all(color: Colors.transparent, width: 0.5),
               color: Colors.white,
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20.0),
-              child: DataTable(
-                columns: columns,
-                rows: rows,
-                columnSpacing: 10,
-                dataRowHeight: 40,
-                headingRowHeight: 48,
-                headingRowColor:
-                    MaterialStateProperty.all(Colors.blueGrey[100]),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.blueGrey[300]!, width: 1),
-                  borderRadius: BorderRadius.circular(10),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal, // Enable horizontal scrolling
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20.0),
+                child: DataTable(
+                  columns: columns,
+                  rows: rows,
+                  columnSpacing: 10,
+                  dataRowHeight: 40,
+                  headingRowHeight: 48,
+                  headingRowColor:
+                      MaterialStateProperty.all(Colors.blueGrey[100]),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.blueGrey[300]!, width: 1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
             ),

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:score_manager/models/UserProfile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/Game.dart';
 import '../models/Tournament.dart';
@@ -351,7 +352,15 @@ class _ScoresPageState extends State<ScoresPage> {
       int winCount = wins[entry.key] ?? 0;
       String participantName =
           tournament.participants[int.parse(entry.key.toString())].name;
+      bool isCurrentUser = participantName == UserProfileSingleton().username;
+
       rows.add(DataRow(
+        color: MaterialStateProperty.resolveWith<Color?>(
+              (Set<MaterialState> states) {
+            if (isCurrentUser) return Colors.lightBlue[100]; // Highlight color for current user
+            return null;
+          },
+        ),
         cells: [
           DataCell(Text(participantName)),
           DataCell(Center(child: Text(entry.value.toString(), textAlign: TextAlign.center))),

@@ -6,6 +6,7 @@ import 'package:score_manager/screens/home_page.dart';
 import 'config/bukDataEntry.dart';
 import 'firebase_options.dart';
 import 'config/app_mode.dart';
+import 'models/UserProfile.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +16,7 @@ Future<void> main() async {
 
   // Check if the user is signed in
   User? user = FirebaseAuth.instance.currentUser;
+  UserProfileSingleton().fetchUserProfile();
 
   //desencidng order from index
   List<String> entries = [
