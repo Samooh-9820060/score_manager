@@ -78,6 +78,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
+  void _handleFabPressed() {
+    print(_bottomNavIndex);
+    switch (_bottomNavIndex) {
+      case 0:
+        // Action for first tab
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => AddGameForm()),
+        );
+        break;
+      case 1:
+        // Action for second tab
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => TournamentCreationForm()),
+        );
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -124,21 +144,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         onTap: _onTabTapped,
         showUnselectedLabels: false,
       ),
-      floatingActionButton: Container(
-        height: 56.0, // Standard FAB height
-        width: 56.0, // Standard FAB width
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color:
-              Theme.of(context).primaryColor, // Or any other color you prefer
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 8.0,
-              spreadRadius: 3.0,
-            ),
-          ],
-        ),
+      floatingActionButton: _bottomNavIndex > 1
+          ? FloatingActionButton(
+        backgroundColor: Theme.of(context).primaryColor,
+        elevation: 8.0,
         child: PopupMenuButton<FloatingActionButtonAction>(
           enableFeedback: true,
           offset: Offset(0, -140),
@@ -147,8 +156,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               case FloatingActionButtonAction.createTournament:
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                      builder: (context) => TournamentCreationForm()),
+                  MaterialPageRoute(builder: (context) => TournamentCreationForm()),
                 );
                 break;
               case FloatingActionButtonAction.addGame:
@@ -159,8 +167,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 break;
             }
           },
-          itemBuilder: (BuildContext context) =>
-              <PopupMenuEntry<FloatingActionButtonAction>>[
+          itemBuilder: (BuildContext context) => <PopupMenuEntry<FloatingActionButtonAction>>[
             const PopupMenuItem<FloatingActionButtonAction>(
               value: FloatingActionButtonAction.createTournament,
               child: ListTile(
@@ -179,6 +186,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: Icon(Icons.add, color: Colors.white),
           tooltip: 'Options',
         ),
+        onPressed: () {}, // Keep this empty since PopupMenuButton handles the interaction
+      )
+          : FloatingActionButton(
+        backgroundColor: Theme.of(context).primaryColor,
+        elevation: 8.0,
+        child: Icon(Icons.add, color: Colors.white),
+        onPressed: _handleFabPressed,
       ),
       drawer: Drawer(
         child: ListView(
@@ -211,8 +225,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                      builder: (context) => AboutUsPage()),
+                  MaterialPageRoute(builder: (context) => AboutUsPage()),
                 );
               },
             ),
@@ -222,8 +235,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                      builder: (context) => ContactUsPage()),
+                  MaterialPageRoute(builder: (context) => ContactUsPage()),
                 );
               },
             ),
