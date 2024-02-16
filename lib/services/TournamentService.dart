@@ -47,6 +47,16 @@ class TournamentService {
     return null;
   }
 
+  Future<void> finishTournament(String tournamentId, int winnerId) async {
+    try {
+      await _firestore.collection('tournaments').doc(tournamentId).update({
+        'winner': winnerId,
+      });
+    } catch (e) {
+      print('Error finishing tournament: $e');
+    }
+  }
+
   Future<void> deleteTournament(String tournamentId) async {
     try {
       // Delete tournament

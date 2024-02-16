@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:score_manager/screens/finish_tournament.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:score_manager/screens/add_manual_score.dart';
 import 'package:score_manager/screens/game_form.dart';
@@ -114,6 +115,16 @@ class _TournamentListPageState extends State<TournamentListPage> {
                   await prefs.setString('defaultTournamentId', tournament.id);
                   getDefaultTournamentId();
                   showInfoDialog('Set Default Tournament', 'Tournament has been set as default and will be always seleceted when inserting games', false, context);
+                },
+                finishTournament: () async {
+                  await showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return Dialog(
+                        child: FinishTournamentWidget(tournament: tournament),
+                      );
+                    },
+                  );
                 },
                 isDefault: tournament.id == defaultTournamentId,
               );

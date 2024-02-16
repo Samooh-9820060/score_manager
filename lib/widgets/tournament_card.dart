@@ -13,6 +13,7 @@ class TournamentCard extends StatelessWidget {
   final VoidCallback onViewStats;
   final VoidCallback onDeleteTournament;
   final VoidCallback onSetDefault;
+  final VoidCallback finishTournament;
   final bool isDefault;
 
   TournamentCard({
@@ -23,6 +24,7 @@ class TournamentCard extends StatelessWidget {
     required this.onViewStats,
     required this.onDeleteTournament,
     required this.onSetDefault,
+    required this.finishTournament,
     this.isDefault = false,
   });
 
@@ -98,6 +100,9 @@ class TournamentCard extends StatelessWidget {
                         case 'delete_tournament':
                           onDeleteTournament();
                           break;
+                        case 'finish_tournament':
+                          finishTournament();
+                          break;
                         case 'set_default':
                           onSetDefault();
                           break;
@@ -131,6 +136,13 @@ class TournamentCard extends StatelessWidget {
                           child: ListTile(
                             leading: Icon(Icons.bar_chart), // Stats/Analytics icon
                             title: Text('View Stats'),
+                          ),
+                        ),
+                        PopupMenuItem<String>(
+                          value: 'finish_tournament',
+                          child: ListTile(
+                            leading: Icon(Icons.emoji_events),
+                            title: Text('Finish Tournament'),
                           ),
                         ),
                         PopupMenuItem<String>(
