@@ -147,8 +147,10 @@ class TournamentService {
         await docRef.delete();
       }
 
+      print(organizedData);
       // Add new data
       var convertedData = convertMapKeysToString(organizedData);
+      print(convertedData);
       await docRef.set(convertedData);
 
       showInfoDialog('Sync Data', 'Data Successfully Updated from DB', false, context);

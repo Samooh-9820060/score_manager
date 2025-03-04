@@ -54,13 +54,15 @@ class _ScoresPageState extends State<ScoresPage> {
     var stream = TournamentService().getEditableTournamentsStream(userId);
 
     stream.listen((tournamentsData) {
-      setState(() {
-        tournaments = tournamentsData;
-        if (tournaments.isNotEmpty && selectedTournamentId == null) {
-          selectedTournamentId = tournaments.first.id;
-          _fetchGamesForSelectedFilters(); // Fetch games for the first tournament
-        }
-      });
+      if (mounted) {
+        setState(() {
+          tournaments = tournamentsData;
+          if (tournaments.isNotEmpty && selectedTournamentId == null) {
+            selectedTournamentId = tournaments.first.id;
+            _fetchGamesForSelectedFilters(); // Fetch games for the first tournament
+          }
+        });
+      }
     });
   }
 

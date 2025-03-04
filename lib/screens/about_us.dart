@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 class AboutUsPage extends StatefulWidget {
+  const AboutUsPage({super.key});
+
   @override
-  _AboutUsPageState createState() => _AboutUsPageState();
+  AboutUsPageState createState() => AboutUsPageState();
 }
 
-class _AboutUsPageState extends State<AboutUsPage> with SingleTickerProviderStateMixin {
+class AboutUsPageState extends State<AboutUsPage> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 

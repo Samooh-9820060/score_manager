@@ -1,0 +1,2 @@
+/Users/samoohmoosa/Documents/GitHub/score_manager/android/app/.cxx/Debug/4a2eb32r/armeabi-v7a/CMakeFiles/edit_cache.dir
+/Users/samoohmoosa/Documents/GitHub/score_manager/android/app/.cxx/Debug/4a2eb32r/armeabi-v7a/CMakeFiles/rebuild_cache.dir

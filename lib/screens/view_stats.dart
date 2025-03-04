@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:score_manager/models/UserProfile.dart';
@@ -20,13 +21,13 @@ class ParticipantScore {
 class ViewStatsScreen extends StatefulWidget {
   final Tournament tournament;
 
-  ViewStatsScreen({Key? key, required this.tournament}) : super(key: key);
+  const ViewStatsScreen({super.key, required this.tournament});
 
   @override
-  _ViewStatsScreenState createState() => _ViewStatsScreenState();
+  ViewStatsScreenState createState() => ViewStatsScreenState();
 }
 
-class _ViewStatsScreenState extends State<ViewStatsScreen> {
+class ViewStatsScreenState extends State<ViewStatsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -48,7 +49,7 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
                     return Text('Error: ${snapshot.error}');
                   }
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: const CircularProgressIndicator());
+                    return const Center(child: CircularProgressIndicator());
                   }
                   var aggregatedData =
                       snapshot.data?.data() as Map<String, dynamic>? ?? {};
@@ -63,7 +64,7 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
                         return Text('Error: ${manualScoresSnapshot.error}');
                       }
                       if (manualScoresSnapshot.connectionState == ConnectionState.waiting) {
-                        return Center(child: const CircularProgressIndicator());
+                        return const Center(child: CircularProgressIndicator());
                       }
                       var manualScoresData =
                           manualScoresSnapshot.data?.data() as Map<String, dynamic>? ?? {};
@@ -117,7 +118,7 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
           dailyData.containsKey('scores')) {
         var scores = dailyData['scores'] as Map<String, dynamic>;
 
-        int totalScore = scores.values.fold(0, (sum, score) => sum + (int.tryParse(score.toString()) ?? 0));
+        int totalScore = scores.values.fold(0, (sumValue, score) => sumValue + (int.tryParse(score.toString()) ?? 0));
 
         if (totalScore > 0) {
           // Sorting the scores
@@ -158,7 +159,7 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
 
   void _showManualPoints(BuildContext context) async {
     FirebaseFirestore firestore = FirebaseFirestore.instance;
-    var tournamentId = widget.tournament?.id;
+    var tournamentId = widget.tournament.id;
 
     // Fetch data from Firestore
     var snapshot = await firestore
@@ -184,9 +185,9 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
                       if (participantIndex != null &&
                           participantIndex >= 0 &&
                           participantIndex <
-                              widget.tournament!.participants.length) {
+                              widget.tournament.participants.length) {
                         participantName = widget
-                            .tournament!.participants[participantIndex].name;
+                            .tournament.participants[participantIndex].name;
                       }
 
                       // Format the date/time
@@ -221,7 +222,7 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
                                 Text(
                                     'Type: ${entryData['typeToAdd'] ?? 'Unknown'}',
                                     style:
-                                        TextStyle(fontWeight: FontWeight.bold)),
+                                        const TextStyle(fontWeight: FontWeight.bold)),
                                 Text('Participant: $participantName'),
                                 Text('Reason: ${entryData['reason']}'),
                                 Text('Value: ${entryData['value']}'),
@@ -233,9 +234,9 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
                       );
                     }).toList(),
                   )
-                : Center(
+                : const Center(
                     child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: EdgeInsets.all(16.0),
                     child: Text('There are no entries',
                         style: TextStyle(fontSize: 16)),
                   )),
@@ -266,9 +267,7 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
     }
   }
 
-  Widget _buildDataTable(
-      Map<String, List<int>> aggregatedData, Map<String, int> winsData, Map<String, dynamic> manualScoresData, Map<String, dynamic> totalData) {
-
+  Widget _buildDataTable(Map<String, List<int>> aggregatedData, Map<String, int> winsData, Map<String, dynamic> manualScoresData, Map<String, dynamic> totalData,) {
     // Map participant index to name
     Map<int, String> indexToNameMap = {};
     for (var i = 0; i < widget.tournament.participants.length; i++) {
@@ -299,17 +298,13 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
 
     int calculateTotalScore(String participantName, Map<String, dynamic> fullData, Map<int, String> indexToNameMap) {
       int totalScore = 0;
-
       fullData.forEach((date, dataMap) {
         Map<dynamic, dynamic> scores = dataMap['scores'];
         scores.forEach((index, score) {
-          // Convert index to int before lookup if it's not already an int
-          int participantIndex = int.tryParse(index.toString()) ?? -1; // Handle potential parsing failure
+          int participantIndex = int.tryParse(index.toString()) ?? -1;
           String? participantNameAtIndex = indexToNameMap[participantIndex];
-
           if (participantNameAtIndex == participantName) {
-            // Add the score to the total score
-            totalScore += score as int; // Ensure score is an integer
+            totalScore += score as int;
           }
         });
       });
@@ -325,34 +320,56 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
       return ParticipantScore(name: participantName, points: points, wins: wins, totalScore: totalScore);
     }).toList();
 
-    // Sort the list based on points in descending order
-    participantScores.sort((a, b) => b.points.compareTo(a.points));
+    // Sort by points (descending), then wins (descending), then totalScore (descending)
+    participantScores.sort((a, b) {
+      int pointsComparison = b.points.compareTo(a.points);
+      if (pointsComparison != 0) return pointsComparison;
+      int winsComparison = b.wins.compareTo(a.wins);
+      if (winsComparison != 0) return winsComparison;
+      return b.totalScore.compareTo(a.totalScore);
+    });
 
+    // Build the DataRow list with conditional cells
     List<DataRow> rows = participantScores.map<DataRow>((participant) {
       bool isCurrentUser = participant.name == UserProfileSingleton().username;
       return DataRow(
-        color: MaterialStateProperty.resolveWith<Color?>(
-              (Set<MaterialState> states) {
-            if (isCurrentUser) return Colors.lightBlue[100]; // Mint green
+        color: WidgetStateProperty.resolveWith<Color?>(
+              (Set<WidgetState> states) {
+            if (isCurrentUser) return Colors.lightBlue[100];
             return null;
           },
         ),
         cells: [
-          DataCell(Text(participant.name)),
-          DataCell(Center(child: Text(participant.points.toString(), textAlign: TextAlign.center))),
-          DataCell(Center(child: Text(participant.wins.toString(), textAlign: TextAlign.center))),
-          DataCell(Center(child: Text(participant.totalScore.toString(), textAlign: TextAlign.center))),
+          // Participant column wrapped in a ConstrainedBox (adjust width as needed)
+          DataCell(
+            ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 200),
+              child: Center(
+                child: Text(
+                  participant.name,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ),
+          if (widget.tournament.scoringMethod.toLowerCase() != 'direct')
+            DataCell(Center(child: Center(child: Text(participant.points.toString(), textAlign: TextAlign.center)))),
+          DataCell(Center(child: Center(child: Text(participant.wins.toString(), textAlign: TextAlign.center)))),
+          DataCell(Center(child: Center(child: Text(participant.totalScore.toString(), textAlign: TextAlign.center)))),
         ],
       );
     }).toList();
 
+    // Build the DataColumn list with a conditional column
     List<DataColumn> columns = [
-      const DataColumn(label: Text('Participant')),
-      const DataColumn(label: Text('Points')),
-      const DataColumn(label: Text('Total Wins')),
-      const DataColumn(label: Text('Total Score')),
+      const DataColumn(label: Center(child: Text('Participant'))),
+      if (widget.tournament.scoringMethod.toLowerCase() != 'direct')
+        const DataColumn(label: Center(child: Text('Points'))),
+      const DataColumn(label: Center(child: Text('Total Wins'))),
+      const DataColumn(label: Center(child: Text('Total Score'))),
     ];
 
+    // Wrap the DataTable2 in LayoutBuilder/ConstrainedBox so it takes full width
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -362,7 +379,8 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Scores (${widget.tournament.scoringMethod} - ${widget.tournament.pointCalculationFrequency})',
+                'Scores (${widget.tournament.scoringMethod[0].toUpperCase()}${widget.tournament.scoringMethod.substring(1)} - '
+                    '${widget.tournament.pointCalculationFrequency?[0].toUpperCase()}${widget.tournament.pointCalculationFrequency?.substring(1)})',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -381,7 +399,7 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
                   }
                 },
                 itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                  PopupMenuItem<String>(
+                  const PopupMenuItem<String>(
                     value: 'manual_points',
                     child: Row(
                       children: <Widget>[
@@ -391,7 +409,7 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
                       ],
                     ),
                   ),
-                  PopupMenuItem<String>(
+                  const PopupMenuItem<String>(
                     value: 'recalculate_scores',
                     child: Row(
                       children: <Widget>[
@@ -402,38 +420,46 @@ class _ViewStatsScreenState extends State<ViewStatsScreen> {
                     ),
                   ),
                 ],
-                icon: Icon(Icons.more_vert),
+                icon: const Icon(Icons.more_vert),
               ),
             ],
           ),
         ),
-        FractionallySizedBox(
-          widthFactor: 1.0, // 100% width
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20.0),
-              border: Border.all(color: Colors.transparent, width: 0.5),
-              color: Colors.white,
-            ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal, // Enable horizontal scrolling
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20.0),
-                child: DataTable(
-                  columns: columns,
-                  rows: rows,
-                  columnSpacing: 10,
-                  dataRowHeight: 40,
-                  headingRowHeight: 48,
-                  headingRowColor:
-                      MaterialStateProperty.all(Colors.blueGrey[100]),
+        Align(
+          alignment: Alignment.center,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Define row heights dynamically
+              double rowHeight = 40; // Individual row height
+              double headerHeight = 48; // Header row height
+              double totalHeight = (rows.length * rowHeight) + headerHeight; // Extra padding
+
+              return ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: Container(
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.blueGrey[300]!, width: 1),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(20.0),
+                    border: Border.all(color: Colors.transparent, width: 0.5),
+                    color: Colors.white,
+                  ),
+                  child: SizedBox(
+                    height: totalHeight.clamp(150, 600), // Ensuring min & max constraints
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20.0),
+                      child: DataTable2(
+                        columns: columns,
+                        rows: rows,
+                        columnSpacing: 10,
+                        dataRowHeight: rowHeight,
+                        minWidth: constraints.maxWidth, // Ensures table takes full width
+                        headingRowHeight: headerHeight,
+                        headingRowColor: WidgetStateProperty.all(Colors.blueGrey[100]),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ),
       ],

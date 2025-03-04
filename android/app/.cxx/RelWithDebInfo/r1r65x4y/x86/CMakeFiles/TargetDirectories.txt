@@ -1,0 +1,2 @@
+/Users/samoohmoosa/Documents/GitHub/score_manager/android/app/.cxx/RelWithDebInfo/r1r65x4y/x86/CMakeFiles/edit_cache.dir
+/Users/samoohmoosa/Documents/GitHub/score_manager/android/app/.cxx/RelWithDebInfo/r1r65x4y/x86/CMakeFiles/rebuild_cache.dir

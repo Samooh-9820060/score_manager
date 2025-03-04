@@ -1,5 +1,6 @@
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:score_manager/screens/SignIn.dart';
@@ -206,32 +207,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  AutoSizeText(
+                  const AutoSizeText(
                     'Welcome,',
                     style: TextStyle(color: Colors.white, fontSize: 24),
                     maxLines: 1,
                   ),
                   AutoSizeText(
                     '$username',
-                    style: TextStyle(color: Colors.white, fontSize: 24),
+                    style: const TextStyle(color: Colors.white, fontSize: 24),
                     maxLines: 1,
                   ),
                 ],
               ),
             ),
             ListTile(
-              leading: Icon(Icons.info_outline),
-              title: Text('About Us'),
+              leading: const Icon(Icons.info_outline),
+              title: const Text('About Us'),
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => AboutUsPage()),
+                  MaterialPageRoute(builder: (context) => const AboutUsPage()),
                 );
               },
             ),
             ListTile(
-              leading: Icon(Icons.contact_phone),
-              title: Text('Contact Us'),
+              leading: const Icon(Icons.contact_phone),
+              title: const Text('Contact Us'),
               onTap: () {
                 Navigator.push(
                   context,
