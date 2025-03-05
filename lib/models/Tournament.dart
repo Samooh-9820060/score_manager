@@ -14,6 +14,7 @@ class Tournament {
   final String createdBy;
   final int? winner;
   final List<String> viewTournament;
+  final List<String> sortingCriteria;
 
   Tournament({
     required this.id,
@@ -28,6 +29,7 @@ class Tournament {
     required this.createdDate,
     required this.createdBy,
     this.viewTournament = const [],
+    this.sortingCriteria = const [],
   });
 
   factory Tournament.fromFirestore(DocumentSnapshot doc) {
@@ -55,6 +57,7 @@ class Tournament {
       createdBy: data['createdBy'] ?? '',
       winner: data['winner'],
       viewTournament: List<String>.from(data['viewTournament'] ?? viewableUsers),
+      sortingCriteria: List<String>.from(data['sortingCriteria'] ?? []),
     );
   }
 
@@ -72,6 +75,7 @@ class Tournament {
       'createdBy': createdBy,
       'winner': winner,
       'viewTournament': viewTournament,
+      'sortingCriteria': sortingCriteria,
     };
   }
 }

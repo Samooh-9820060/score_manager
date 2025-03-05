@@ -147,15 +147,31 @@ class TournamentService {
         await docRef.delete();
       }
 
-      print(organizedData);
       // Add new data
       var convertedData = convertMapKeysToString(organizedData);
-      print(convertedData);
       await docRef.set(convertedData);
 
       showInfoDialog('Sync Data', 'Data Successfully Updated from DB', false, context);
     } catch (e) {
       showInfoDialog('Sync Data', 'Error recalculating scores: $e', false, context);
+    }
+  }
+
+  Future<void> saveSortingCriteria(Tournament tournament, List<String> selectedCriteria, BuildContext context) async {
+    try {
+      DocumentReference tournamentDoc = FirebaseFirestore.instance.collection('tournaments').doc(tournament.id);
+
+      // Convert list to a Firestore-friendly format
+      Map<String, dynamic> sortingData = {
+        'sortingCriteria': selectedCriteria,
+      };
+
+      // Save the sorting criteria
+      await tournamentDoc.update(sortingData);
+
+      showInfoDialog('Sorting Criteria', 'Sorting preferences saved successfully!', false, context);
+    } catch (e) {
+      showInfoDialog('Sorting Criteria', 'Failed to save sorting preferences: $e', false, context);
     }
   }
 

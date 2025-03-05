@@ -28,6 +28,15 @@ class ViewStatsScreen extends StatefulWidget {
 }
 
 class ViewStatsScreenState extends State<ViewStatsScreen> {
+  List<ParticipantScore> participantScores = [];
+  List<String> _currentSortingCriteria = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _currentSortingCriteria = widget.tournament.sortingCriteria ?? [];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -84,9 +93,7 @@ class ViewStatsScreenState extends State<ViewStatsScreen> {
     );
   }
 
-  Map<String, int> _aggregateWins(
-      Map<String, dynamic> data, List<Participant> participants) {
-    Map<String, int> totalWins = {};
+  Map<String, int> _aggregateWins(Map<String, dynamic> data, List<Participant> participants) {Map<String, int> totalWins = {};
 
     // Initialize wins for each participant
     for (var participant in participants) {
@@ -267,6 +274,119 @@ class ViewStatsScreenState extends State<ViewStatsScreen> {
     }
   }
 
+  void _showSortOptions(BuildContext context) {
+    List<String> selectedCriteria = [];
+    List<String> criteriaList = ['wins', 'totalScore']; // Default available criteria
+
+    // Add "points" only if the scoring method is NOT "Direct"
+    if (widget.tournament.scoringMethod.toLowerCase() != 'direct') {
+      criteriaList.insert(0, 'points'); // Insert at first position
+    }
+
+    int maxSelections = criteriaList.length; // Limit selection to available criteria
+
+    void selectSort(String criteria) {
+      if (!selectedCriteria.contains(criteria)) {
+        selectedCriteria.add(criteria);
+      }
+      if (selectedCriteria.length == maxSelections) {
+        // Save to Firestore
+        TournamentService().saveSortingCriteria(widget.tournament, selectedCriteria, context);
+
+        // Update local state and sort immediately
+        setState(() {
+          _currentSortingCriteria = selectedCriteria;
+          _sortData(_currentSortingCriteria);
+        });
+        Navigator.pop(context); // Close dialog after selections are made
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Select Sorting Order'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (selectedCriteria.length < 1)
+                    Text("Select first sorting criteria"),
+                  if (selectedCriteria.length == 1 && maxSelections > 1)
+                    Text("Select second sorting criteria"),
+                  if (selectedCriteria.length == 2 && maxSelections > 2)
+                    Text("Select third sorting criteria"),
+                  const SizedBox(height: 10),
+                  Column(
+                    children: criteriaList
+                        .where((c) => !selectedCriteria.contains(c)) // Hide selected criteria
+                        .map((c) => ListTile(
+                      leading: Icon(
+                        c == 'points'
+                            ? Icons.leaderboard
+                            : c == 'wins'
+                            ? Icons.emoji_events
+                            : Icons.score,
+                      ),
+                      title: Text(
+                        c == 'points'
+                            ? 'Points'
+                            : c == 'wins'
+                            ? 'Total Wins'
+                            : 'Total Score',
+                      ),
+                      onTap: () {
+                        setState(() => selectSort(c));
+                      },
+                    ))
+                        .toList(),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _sortData(List<String>? sortingCriteria) {
+    participantScores.sort((a, b) {
+      if (sortingCriteria == null || sortingCriteria.isEmpty) {
+        // 🔥 Default sorting: Points → Wins → Total Score
+        int pointsComparison = b.points.compareTo(a.points);
+        if (pointsComparison != 0) return pointsComparison;
+
+        int winsComparison = b.wins.compareTo(a.wins);
+        if (winsComparison != 0) return winsComparison;
+
+        return b.totalScore.compareTo(a.totalScore);
+      } else {
+        // 🔥 Custom sorting based on user-defined criteria
+        for (String criteria in sortingCriteria) {
+          int comparison;
+          switch (criteria) {
+            case 'points':
+              comparison = b.points.compareTo(a.points);
+              break;
+            case 'wins':
+              comparison = b.wins.compareTo(a.wins);
+              break;
+            case 'totalScore':
+              comparison = b.totalScore.compareTo(a.totalScore);
+              break;
+            default:
+              comparison = 0;
+          }
+          if (comparison != 0) return comparison; // Move to next criteria only if equal
+        }
+        return 0;
+      }
+    });
+  }
+
   Widget _buildDataTable(Map<String, List<int>> aggregatedData, Map<String, int> winsData, Map<String, dynamic> manualScoresData, Map<String, dynamic> totalData,) {
     // Map participant index to name
     Map<int, String> indexToNameMap = {};
@@ -312,7 +432,7 @@ class ViewStatsScreenState extends State<ViewStatsScreen> {
     }
 
     // Create a list of ParticipantScore objects
-    var participantScores = aggregatedData.entries.map((entry) {
+    participantScores = aggregatedData.entries.map((entry) {
       var participantName = entry.key;
       int points = calculateTotalPoints(participantName, aggregatedData, manualScoresData);
       int wins = calculateTotalWins(participantName, winsData, manualScoresData);
@@ -320,14 +440,8 @@ class ViewStatsScreenState extends State<ViewStatsScreen> {
       return ParticipantScore(name: participantName, points: points, wins: wins, totalScore: totalScore);
     }).toList();
 
-    // Sort by points (descending), then wins (descending), then totalScore (descending)
-    participantScores.sort((a, b) {
-      int pointsComparison = b.points.compareTo(a.points);
-      if (pointsComparison != 0) return pointsComparison;
-      int winsComparison = b.wins.compareTo(a.wins);
-      if (winsComparison != 0) return winsComparison;
-      return b.totalScore.compareTo(a.totalScore);
-    });
+    // Sort participant scores dynamically based on selected sorting criteria
+    _sortData(_currentSortingCriteria);
 
     // Build the DataRow list with conditional cells
     List<DataRow> rows = participantScores.map<DataRow>((participant) {
@@ -396,6 +510,9 @@ class ViewStatsScreenState extends State<ViewStatsScreen> {
                     case 'recalculate_scores':
                       _confirmRecalculateScores(context);
                       break;
+                    case 'sort_by':
+                      _showSortOptions(context);
+                      break;
                   }
                 },
                 itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -416,6 +533,16 @@ class ViewStatsScreenState extends State<ViewStatsScreen> {
                         Icon(Icons.refresh),
                         SizedBox(width: 8),
                         Text('Recalculate Scores'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'sort_by',
+                    child: Row(
+                      children: <Widget>[
+                        Icon(Icons.sort),
+                        SizedBox(width: 8),
+                        Text('Sort By'),
                       ],
                     ),
                   ),
